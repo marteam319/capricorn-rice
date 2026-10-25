@@ -1,0 +1,12 @@
+# backups / archives
+*.tar.gz
+*.tar.xz
+*.zip
+
+# python
+__pycache__/
+*.pyc
+.venv/
+
+# generated wallpapers (rebuild with the scripts)
+*.png.bak

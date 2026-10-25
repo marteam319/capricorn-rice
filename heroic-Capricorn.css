@@ -1,0 +1,108 @@
+/* Capricorn — Heroic Games Launcher (black -> red gradient) */
+
+html,
+body,
+body.midnightMirage,
+body[class] {
+    background: linear-gradient(160deg, #000000 0%, #140003 35%, #3a000c 70%, #120003 100%) fixed !important;
+    color: #f4eff1 !important;
+}
+
+body.midnightMirage,
+body {
+    --accent: #ff2038 !important;
+    --accent-overlay: #ff4055 !important;
+    --navbar-accent: #f4eff1 !important;
+
+    --body-background: transparent !important;
+    --background: rgba(10, 0, 4, 0.72) !important;
+    --background-darker: rgba(6, 0, 2, 0.82) !important;
+    --background-lighter: rgba(34, 4, 12, 0.85) !important;
+    --background-secondary: rgba(16, 2, 6, 0.78) !important;
+    --current-background: transparent !important;
+    --input-background: rgba(26, 2, 8, 0.9) !important;
+    --search-bar-background: rgba(16, 2, 6, 0.9) !important;
+    --search-bar-border: rgba(255, 32, 56, 0.25) !important;
+    --modal-background: rgba(10, 0, 4, 0.96) !important;
+    --modal-border: rgba(255, 32, 56, 0.3) !important;
+    --modal-backdrop: rgba(0, 0, 0, 0.88) !important;
+
+    --text-default: #f4eff1 !important;
+    --text-secondary: #d0a8b0 !important;
+    --text-tertiary: #8a6a72 !important;
+    --text-title: #ffffff !important;
+    --text-gametitle: #f4eff1 !important;
+
+    --divider: rgba(255, 32, 56, 0.18) !important;
+    --status-success: #0dff6e !important;
+    --status-danger: #ff2038 !important;
+    --status-warning: #ffb020 !important;
+    --status-info: #b14cff !important;
+    --link: #0dff6e !important;
+    --gamecard-title-color: #f4eff1 !important;
+    --action-icon: #d0a8b0 !important;
+    --action-icon-hover: #ff4055 !important;
+    --action-icon-active: #ff2038 !important;
+
+    --gradient-body-background: linear-gradient(160deg, #000000, #140003 35%, #3a000c 70%, #120003) !important;
+    --gradient-gamecard: linear-gradient(180deg, rgba(58, 0, 12, 0.85), rgba(12, 0, 4, 0.95)) !important;
+}
+
+/* MUI surfaces, so it's unmistakably red */
+.MuiPaper-root {
+    background-color: rgba(14, 1, 5, 0.88) !important;
+    background-image: linear-gradient(180deg, rgba(255, 32, 56, 0.05), transparent) !important;
+    color: #f4eff1 !important;
+}
+.MuiAppBar-root {
+    background: linear-gradient(90deg, #0a0004, #2a0009) !important;
+    box-shadow: 0 1px 0 rgba(255, 32, 56, 0.25) !important;
+}
+.MuiDrawer-paper {
+    background: linear-gradient(180deg, #050001, #140004) !important;
+    border-right: 1px solid rgba(255, 32, 56, 0.18) !important;
+}
+.MuiCard-root {
+    background: linear-gradient(180deg, rgba(40, 2, 10, 0.85), rgba(12, 0, 4, 0.95)) !important;
+    border: 1px solid rgba(255, 32, 56, 0.16) !important;
+}
+.MuiCard-root:hover {
+    border-color: rgba(255, 32, 56, 0.4) !important;
+    box-shadow: 0 8px 24px rgba(255, 32, 56, 0.16);
+}
+.MuiButton-contained,
+.MuiButton-containedPrimary {
+    background: linear-gradient(135deg, #ff2038, #8a0d2e) !important;
+    color: #0b0710 !important;
+}
+.MuiButton-contained:hover {
+    background: linear-gradient(135deg, #ff4055, #a3145e) !important;
+}
+.MuiButton-text,
+.MuiIconButton-root {
+    color: #e8d0d6 !important;
+}
+.Mui-divider,
+hr {
+    border-color: rgba(255, 32, 56, 0.18) !important;
+}
+.MuiInputBase-root {
+    background-color: rgba(26, 2, 8, 0.9) !important;
+}
+.MuiOutlinedInput-notchedOutline {
+    border-color: rgba(255, 32, 56, 0.25) !important;
+}
+*:focus-visible {
+    outline-color: #ff2038 !important;
+}
+::selection {
+    background: #ff2038;
+    color: #0b0710;
+}
+::-webkit-scrollbar-thumb {
+    background: rgba(255, 32, 56, 0.32);
+    border-radius: 8px;
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+}
