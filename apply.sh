@@ -14,6 +14,10 @@ plasma-apply-colorscheme BreezeDark >/dev/null 2>&1 || true
 plasma-apply-colorscheme "$SCHEME" >/dev/null 2>&1 || true
 
 plasma-apply-wallpaperimage "$WALL"
+mkdir -p "$HOME/.config/kitty"
+cp "$(dirname "$0")/kitty/kitty.conf" "$HOME/.config/kitty/kitty.conf"
+kwriteconfig6 --file kdeglobals --group General --key TerminalApplication kitty
+kwriteconfig6 --file kdeglobals --group General --key TerminalService kitty.desktop
 kwriteconfig6 --file konsolerc --group "Desktop Entry" --key DefaultProfile "$SCHEME.profile"
 kwriteconfig6 --file kdeglobals --group WM --key activeFont "Chakra Petch,11,-1,5,50,0,0,0,0,0"
 

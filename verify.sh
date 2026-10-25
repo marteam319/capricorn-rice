@@ -5,7 +5,8 @@ chk() { if [ -e "$1" ]; then printf "  ok   %s\n" "$2"; else printf "  MISS %s (
 
 echo "files"
 chk "$HOME/.local/share/color-schemes/CyberpunkCapricorn.colors"      "colour scheme"
-chk "$HOME/.local/share/konsole/CyberpunkCapricorn.profile"           "konsole profile"
+chk "$HOME/.local/share/konsole/CyberpunkCapricorn.profile"           "konsole profile (fallback)"
+chk "$HOME/.config/kitty/kitty.conf"                                  "kitty config"
 chk "$HOME/.local/share/plasma/desktoptheme/Capricorn-Glass/metadata.json" "glass panel theme"
 chk "$HOME/.local/share/aurorae/themes/Capricorn/metadata.desktop"    "window decoration"
 chk "$HOME/.local/share/plasma/wallpapers/com.capricorn.glitch/contents/ui/main.qml"    "animated wallpaper (left)"
@@ -23,6 +24,7 @@ chk "$HOME/.config/spicetify/Themes/Capricorn/color.ini"              "spotify t
 
 echo "settings"
 printf "  %-18s %s\n" "scheme"   "$(kreadconfig6 --file "$HOME/.config/kdeglobals" --group General --key ColorScheme)"
+printf "  %-18s %s\n" "terminal" "$(kreadconfig6 --file "$HOME/.config/kdeglobals" --group General --key TerminalApplication)"
 printf "  %-18s %s\n" "accent"   "$(kreadconfig6 --file "$HOME/.config/kdeglobals" --group General --key AccentColor)"
 printf "  %-18s %s\n" "panel style" "$(kreadconfig6 --file "$HOME/.config/plasmarc" --group Theme --key name)"
 printf "  %-18s %s\n" "decoration" "$(kreadconfig6 --file "$HOME/.config/kwinrc" --group org.kde.kdecoration2 --key theme)"

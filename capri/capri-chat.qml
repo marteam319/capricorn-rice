@@ -72,7 +72,7 @@ Window {
             say("Breach panel is up.\nTry not to get traced, netrunner.", [])
             closeTimer.restart()
         } else if (id === "opencodeTerm") {
-            exec.run("konsole --workdir /home/marteam/Projekty/cyberpunk-capricorn -e opencode")
+            exec.run("/home/marteam/.local/bin/capri-opencode.sh")
             say("Opening a terminal with OpenCode already running.\nGo break something.", [])
             closeTimer.restart()
         } else if (id === "session") {

@@ -10,6 +10,7 @@ install -m 644 "$ROOT/capri/capri-chat.qml" "$HOME/.local/share/capricorn/capri-
 install -m 644 "$ROOT/capri/capri-avatar.png" "$HOME/.local/share/capricorn/capri-avatar.png"
 install -m 755 "$ROOT/capri/capri-chat-open.sh" "$HOME/.local/bin/capri-chat-open.sh"
 install -m 755 "$ROOT/capri/capri-session.sh" "$HOME/.local/bin/capri-session.sh"
+install -m 755 "$ROOT/capri/capri-opencode.sh" "$HOME/.local/bin/capri-opencode.sh"
 
 rm -rf "$HOME/.local/share/plasma/plasmoids/com.capricorn.capri"
 cp -r "$ROOT/plasmoid/com.capricorn.capri" "$HOME/.local/share/plasma/plasmoids/com.capricorn.capri"
@@ -18,6 +19,7 @@ sed -i "s|/home/marteam|$HOME|g" \
     "$HOME/.local/share/capricorn/capri-chat.qml" \
     "$HOME/.local/bin/capri-chat-open.sh" \
     "$HOME/.local/bin/capri-session.sh" \
+    "$HOME/.local/bin/capri-opencode.sh" \
     "$HOME/.local/share/plasma/plasmoids/com.capricorn.capri/contents/ui/main.qml"
 
 systemctl --user restart plasma-plasmashell

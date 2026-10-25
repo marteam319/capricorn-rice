@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Rebuild the Capricorn setup on this machine (or a fresh install).
-# Requires: Plasma 6, Konsole, fish, fastfetch, rsvg-convert, python3-Pillow.
+# Requires: Plasma 6, kitty, fish, fastfetch, rsvg-convert, python3-Pillow.
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -21,6 +21,13 @@ kwriteconfig6 --file kwinrc --group org.kde.kdecoration2 --key library "org.kde.
 kwriteconfig6 --file kwinrc --group org.kde.kdecoration2 --key theme "__aurorae__svg__Capricorn"
 
 echo "== terminal =="
+mkdir -p "$HOME/.config/kitty" "$HOME/.config/opencode/themes"
+cp kitty/kitty.conf "$HOME/.config/kitty/kitty.conf"
+cp opencode/themes/capricorn.json "$HOME/.config/opencode/themes/capricorn.json"
+[ -f "$HOME/.config/opencode/cli.json" ] || cp opencode/cli.json "$HOME/.config/opencode/cli.json"
+kwriteconfig6 --file kdeglobals --group General --key TerminalApplication kitty
+kwriteconfig6 --file kdeglobals --group General --key TerminalService kitty.desktop
+# keep Konsole themed as a fallback
 kwriteconfig6 --file konsolerc --group "Desktop Entry" --key DefaultProfile "CyberpunkCapricorn.profile"
 kwriteconfig6 --file "$HOME/.local/share/konsole/CyberpunkCapricorn.profile" \
   --group General --key LocalTabTitleFormat "capricorn"
