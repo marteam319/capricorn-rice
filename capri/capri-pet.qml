@@ -46,9 +46,12 @@ Window {
     property var shards: []
     property string bridge: "http://127.0.0.1:8787"
     property real summonSince: Date.now() / 1000
+    property real statusSince: Date.now() / 1000
     property bool popping: false
     property real popScale: 1.0
     property real popRot: 0
+    property bool sitting: false
+    property real warpSquash: 1.0
 
     Plasma5Support.DataSource {
         id: exec
@@ -58,12 +61,27 @@ Window {
         function run(cmd) { exec.connectSource(cmd) }
     }
 
+
     Timer {
         interval: 350
         repeat: true
         running: true
         onTriggered: win.pollSummon()
     }
+
+    Timer {
+        id: popupHide
+        interval: 6500
+        onTriggered: popup.visible = false
+    }
+
+    Timer {
+        interval: 1100
+        repeat: true
+        running: true
+        onTriggered: win.pollStatus()
+    }
+
 
     Timer {
         id: popStay
@@ -131,9 +149,13 @@ Window {
     function teleportTo(x, y, line) {
         if (dragging) return
         busyMoving = true
-        glitchNow(true)
+        glitchNow(true, 260)
         spawnShards(7, body.x + body.width / 2, body.y + 150)
-        body.opacity = 0
+        warpSquash = 1.0
+        warpLine.y = body.y
+        warpLine.opacity = 0.9
+        warpAnim.restart()
+        warpFade.restart()
         tpX = x
         tpY = y
         tpTimer.restart()
@@ -171,7 +193,7 @@ Window {
     }
 
     function wanderStep() {
-        if (!roaming || asleep || peeking || menuOpen || dragging || busyMoving) return
+        if (!roaming || asleep || peeking || sitting || menuOpen || dragging || busyMoving) return
         var r = Math.random()
         if (r < 0.55) {
             var s = randomSpot()
@@ -223,6 +245,56 @@ Window {
         peekTimer.restart()
     }
 
+    // ── transmission popup ──────────────────────────────────────────
+    function placePopup() {
+        var b = win.bounds()
+        var left = b.x0
+        var right = b.x1 + win.width + 8 - popup.width
+        var px = win.x - popup.width + 70
+        if (px < left) px = win.x + win.width - 70
+        px = Math.max(left, Math.min(px, right))
+        var bottom = b.y1 + win.height + 8 - popup.height
+        var py = Math.max(b.y0, Math.min(win.y - 10, bottom))
+        popup.x = Math.round(px)
+        popup.y = Math.round(py)
+    }
+
+    function showPopup(title, state, reply, actions, duration, accent) {
+        popup.titleText = title
+        popup.stateText = state
+        popup.replyText = reply
+        popup.actionCount = actions
+        popup.elapsed = duration
+        popup.accent = accent || win.green
+        popup.visible = false
+        placePopup()
+        popup.visible = true
+        popupHide.restart()
+    }
+
+    function pollStatus() {
+        var x = new XMLHttpRequest()
+        x.open("GET", win.bridge + "/status?since=" + win.statusSince)
+        x.timeout = 900
+        x.onreadystatechange = function () {
+            if (x.readyState !== XMLHttpRequest.DONE) return
+            if (x.status !== 200) return
+            try {
+                var d = JSON.parse(x.responseText)
+                if (d.id > win.statusSince) {
+                    win.statusSince = d.id
+                    var ok = d.state === "done"
+                    win.showPopup(ok ? "MISSION ACCOMPLIE, CHOOM." : "TRANSMISSION ERROR",
+                                  ok ? "DONE" : "ERROR",
+                                  d.reply || "", d.actions || 0, d.duration || 0,
+                                  ok ? win.green : win.red)
+                    if (ok) win.showBubble("done.", "face-smug.png", 1500)
+                }
+            } catch (e) {}
+        }
+        x.send()
+    }
+
     // ── summon from the plasmoid ────────────────────────────────────
     function pollSummon() {
         var x = new XMLHttpRequest()
@@ -249,7 +321,9 @@ Window {
         peekTimer.stop()
         popStay.stop()
         win.peeking = false
+        win.sitting = false
         win.busyMoving = true
+        win.warpSquash = 1.0
         win.wake()
         win.asleep = false
         body.opacity = 1
@@ -261,9 +335,61 @@ Window {
         win.bubbleVisible = false
         win.glitchNow(true, 520)
         win.spawnShards(16, 150, 300)
+        warpLine.y = body.y
+        warpLine.opacity = 0.9
+        warpFade.restart()
         win.lastActivity = Date.now()
+        win.showPopup("WHAT SHOULD WE DO?", "LINKED", "Tune in. Tell me what to break.", 0, 0, win.violet)
         popAnim.restart()
         popStay.restart()
+    }
+
+    // ── sitting on the active application window ────────────────────
+    function parseWindow(text) {
+        if (!text) return
+        var raw = String(text)
+        var at = raw.indexOf("CAPRIWIN|")
+        if (at < 0) return
+        var f = raw.slice(at).trim().split("|")
+        if (f.length < 7) return
+        var x = parseFloat(f[1]), y = parseFloat(f[2])
+        var w = parseFloat(f[3]), h = parseFloat(f[4])
+        var cls = f[5] || ""
+        var cap = f.slice(6).join("|")
+        if (!isFinite(x) || !isFinite(y) || !isFinite(w) || !isFinite(h)) return
+        if (cap.indexOf("CAPRI //") === 0 || cap.indexOf("Capri //") === 0 || cls === "plasmashell") return
+        var good = (y >= 160 && w >= 360 && h >= 240)
+        if (good) win.sitOn(x, y, w, h)
+        else if (win.sitting) win.standUp()
+    }
+
+    function sitOn(x, y, w, h) {
+        if (win.dragging || win.popping) return
+        var tx = Math.round(x + w / 2 - 150)
+        var ty = Math.round(y - 427)
+        if (win.sitting && Math.abs(win.x - tx) < 2 && Math.abs(win.y - ty) < 2) return
+        driftAnim.stop(); tpTimer.stop(); popStay.stop(); peekTimer.stop()
+        win.peeking = false
+        win.busyMoving = false
+        win.asleep = false
+        body.opacity = 1
+        win.popScale = 1.0
+        win.popping = false
+        win.sitting = true
+        win.x = tx
+        win.y = ty
+        win.tilt = 0
+        win.bubbleVisible = false
+        win.lastActivity = Date.now()
+    }
+
+    function standUp() {
+        if (!win.sitting) return
+        win.sitting = false
+        win.glitchNow(true, 220)
+        win.showBubble("oof.", "face-wide.png", 1200)
+        var s = win.randomSpot()
+        win.teleportTo(s.x, s.y, "over here.")
     }
 
     // ── glitch / shards ─────────────────────────────────────────────
@@ -393,6 +519,28 @@ Window {
         onTriggered: if (!win.hovered && !win.menuOpen && !win.peeking && Math.random() < 0.7) win.idleLine()
     }
 
+    Rectangle {
+        id: warpLine
+        x: 149; y: 90; width: 3; height: 420
+        color: win.red
+        opacity: 0
+        visible: opacity > 0
+        z: 16
+    }
+
+    SequentialAnimation {
+        id: warpAnim
+        NumberAnimation { target: win; property: "warpSquash"; to: 0.02; duration: 80; easing.type: Easing.InCubic }
+        NumberAnimation { target: win; property: "warpSquash"; to: 1.0; duration: 180; easing.type: Easing.OutBack }
+    }
+    NumberAnimation {
+        id: warpFade
+        target: warpLine
+        property: "opacity"
+        to: 0
+        duration: 260
+    }
+
     // ── body ────────────────────────────────────────────────────────
     Item {
         id: body
@@ -401,8 +549,9 @@ Window {
         width: 220
         height: 420
         transformOrigin: win.popping ? Item.Center : Item.Bottom
+        transform: Scale { origin.x: body.width / 2; origin.y: body.height / 2; xScale: win.warpSquash }
         rotation: win.tilt + (win.popping ? win.popRot : 0)
-        scale: (win.asleep ? 0.9 : (win.hovered ? 1.02 : 1.0)) * (win.popping ? win.popScale : 1.0)
+        scale: (win.asleep ? 0.9 : (win.hovered ? 1.02 : 1.0)) * (win.popping ? win.popScale : 1.0) * (win.sitting ? 0.55 : 1.0)
         Behavior on scale { enabled: !win.popping; NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
         opacity: 1
         Behavior on opacity { NumberAnimation { duration: 220 } }
@@ -635,6 +784,126 @@ Window {
                     }
                 }
             }
+        }
+    }
+
+    Window {
+        id: popup
+        width: 380
+        height: 232
+        visible: false
+        color: "transparent"
+        title: "CAPRI // TRANSMISSION"
+        flags: Qt.FramelessWindowHint | Qt.WindowStaysOnBottomHint | Qt.Tool
+
+        property string titleText: "MISSION ACCOMPLIE, CHOOM."
+        property string stateText: "DONE"
+        property string replyText: ""
+        property int actionCount: 0
+        property real elapsed: 0
+        property color accent: win.green
+        property string faceFile: "face-smug.png"
+
+        Canvas {
+            anchors.fill: parent
+            onPaint: {
+                var ctx = getContext("2d")
+                ctx.reset()
+                function plate(dx, dy, fill) {
+                    ctx.beginPath()
+                    ctx.moveTo(8 + dx, 20 + dy)
+                    ctx.lineTo(20 + dx, 8 + dy)
+                    ctx.lineTo(230 + dx, 8 + dy)
+                    ctx.lineTo(233 + dx, 14 + dy)
+                    ctx.lineTo(236 + dx, 8 + dy)
+                    ctx.lineTo(348 + dx, 8 + dy)
+                    ctx.lineTo(372 + dx, 32 + dy)
+                    ctx.lineTo(372 + dx, 224 + dy)
+                    ctx.lineTo(30 + dx, 224 + dy)
+                    ctx.lineTo(8 + dx, 202 + dy)
+                    ctx.closePath()
+                    ctx.fillStyle = fill
+                    ctx.fill()
+                }
+                plate(5, 5, win.violet)
+                plate(0, 0, win.ink)
+            }
+        }
+
+        Rectangle { x: 22; y: 21; width: 54; height: 54; color: win.violet }
+        Image {
+            id: popupFace
+            x: 18; y: 17; width: 54; height: 54
+            source: win.assets + popup.faceFile
+            fillMode: Image.PreserveAspectCrop
+        }
+        Rectangle { x: 18; y: 17; width: 54; height: 54; color: "transparent"; border.color: win.ink; border.width: 1 }
+
+        Text {
+            x: 84; y: 14
+            text: "CAPRI"
+            color: win.paper
+            font.family: "Chakra Petch"
+            font.pixelSize: 16
+            font.letterSpacing: 2
+        }
+        Text {
+            x: 145; y: 18
+            text: "/ NIGHT-CITY--"
+            color: win.paper3
+            font.family: "JetBrains Mono"
+            font.pixelSize: 7
+            font.letterSpacing: 1
+        }
+        Rectangle {
+            x: 296; y: 14; width: 64; height: 17
+            color: popup.accent
+            Text {
+                anchors.centerIn: parent
+                text: popup.stateText
+                color: win.ink
+                font.family: "JetBrains Mono"
+                font.pixelSize: 7
+                font.bold: true
+                font.letterSpacing: 1
+            }
+        }
+
+        Text {
+            x: 84; y: 40
+            width: 276; height: 34
+            text: popup.titleText
+            color: win.paper
+            font.family: "Chakra Petch"
+            font.pixelSize: 13
+            wrapMode: Text.WordWrap
+        }
+        Text {
+            x: 84; y: 78
+            width: 276; height: 96
+            text: popup.replyText
+            color: win.paper2
+            font.family: "JetBrains Mono"
+            font.pixelSize: 8
+            lineHeight: 1.4
+            wrapMode: Text.Wrap
+            elide: Text.ElideRight
+            maximumLineCount: 6
+            clip: true
+        }
+        Text {
+            x: 84; y: 194
+            text: "◆ " + popup.actionCount + " actions · " + popup.elapsed + " s"
+            color: popup.accent
+            font.family: "JetBrains Mono"
+            font.pixelSize: 8
+            font.letterSpacing: 1
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            cursorShape: Qt.PointingHandCursor
+            onClicked: popup.visible = false
         }
     }
 

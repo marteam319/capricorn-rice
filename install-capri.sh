@@ -15,11 +15,14 @@ mkdir -p "$HOME/.local/share/capricorn/assets" "$HOME/.local/share/capricorn/wor
 install -m 644 "$ROOT"/capri/assets/* "$HOME/.local/share/capricorn/assets/"
 install -m 644 "$ROOT/capri/capri-chat.qml" "$HOME/.local/share/capricorn/capri-chat.qml"
 install -m 644 "$ROOT/capri/capri-pet.qml" "$HOME/.local/share/capricorn/capri-pet.qml"
+install -m 644 "$ROOT/capri/capri-intro.qml" "$HOME/.local/share/capricorn/capri-intro.qml"
+install -m 644 "$ROOT/capri/capri-pet-rule.js" "$HOME/.local/share/capricorn/capri-pet-rule.js"
 install -m 644 "$ROOT/capri/capri-pet-rule.js" "$HOME/.local/share/capricorn/capri-pet-rule.js"
 install -m 644 "$ROOT/capri/AGENTS.md" "$HOME/.local/share/capricorn/workspace/AGENTS.md"
 install -m 755 "$ROOT/capri/capri-agent.py" "$HOME/.local/share/capricorn/capri-agent.py"
 install -m 755 "$ROOT/capri/capri-chat-open.sh" "$HOME/.local/bin/capri-chat-open.sh"
 install -m 755 "$ROOT/capri/capri-pet-open.sh" "$HOME/.local/bin/capri-pet-open.sh"
+install -m 755 "$ROOT/capri/capri-intro-open.sh" "$HOME/.local/bin/capri-intro-open.sh"
 install -m 755 "$ROOT/capri/capri-summon.sh" "$HOME/.local/bin/capri-summon.sh"
 install -m 755 "$ROOT/capri/capri-opencode.sh" "$HOME/.local/bin/capri-opencode.sh"
 install -m 755 "$ROOT/capri/capri-session.sh" "$HOME/.local/bin/capri-session.sh"
@@ -32,12 +35,30 @@ cp -r "$ROOT/plasmoid/com.capricorn.capri" "$HOME/.local/share/plasma/plasmoids/
 sed -i "s|/home/marteam|$HOME|g" \
     "$HOME/.local/share/capricorn/capri-chat.qml" \
     "$HOME/.local/share/capricorn/capri-pet.qml" \
+    "$HOME/.local/share/capricorn/capri-intro.qml" \
     "$HOME/.local/bin/capri-chat-open.sh" \
     "$HOME/.local/bin/capri-summon.sh" \
     "$HOME/.local/bin/capri-opencode.sh" \
     "$HOME/.local/bin/capri-session.sh" \
     "$HOME/.config/autostart/capri-pet.desktop" \
     "$HOME/.local/share/plasma/plasmoids/com.capricorn.capri/contents/ui/main.qml"
+
+kwriteconfig6 --file kwinrulesrc --group capipopup --key Description "Capri transmission popup"
+kwriteconfig6 --file kwinrulesrc --group capipopup --key title "CAPRI // TRANSMISSION"
+kwriteconfig6 --file kwinrulesrc --group capipopup --key titlematch 1
+kwriteconfig6 --file kwinrulesrc --group capipopup --key skiptaskbar true
+kwriteconfig6 --file kwinrulesrc --group capipopup --key skiptaskbarrule 2
+kwriteconfig6 --file kwinrulesrc --group capipopup --key keepbelow true
+kwriteconfig6 --file kwinrulesrc --group capipopup --key keepbelowrule 2
+kwriteconfig6 --file kwinrulesrc --group capriintro --key Description "Capri intro"
+kwriteconfig6 --file kwinrulesrc --group capriintro --key title "CAPRI // INTRO"
+kwriteconfig6 --file kwinrulesrc --group capriintro --key titlematch 1
+kwriteconfig6 --file kwinrulesrc --group capriintro --key skiptaskbar true
+kwriteconfig6 --file kwinrulesrc --group capriintro --key skiptaskbarrule 2
+kwriteconfig6 --file kwinrulesrc --group capriintro --key keepbelow true
+kwriteconfig6 --file kwinrulesrc --group capriintro --key keepbelowrule 2
+kwriteconfig6 --file kwinrulesrc --group General --key Order "steam,cap0,cap1,capipopup,capriintro"
+qdbus6 org.kde.KWin /KWin reconfigure 2>/dev/null || true
 
 systemctl --user daemon-reload
 systemctl --user enable --now capri-agent.service

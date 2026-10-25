@@ -9,6 +9,7 @@ for i in $(seq 1 24); do
 done
 setsid env QT_QPA_PLATFORM=xcb DISPLAY="${DISPLAY:-:0}" \
     qml6 "$HOME/.local/share/capricorn/capri-pet.qml" >/tmp/capri-pet.log 2>&1 < /dev/null &
+"$HOME/.local/bin/capri-intro-open.sh"
 sleep 1
 # ensure KWin keeps her below normal windows and out of the taskbar
 qdbus6 org.kde.KWin /Scripting org.kde.kwin.Scripting.loadScript \

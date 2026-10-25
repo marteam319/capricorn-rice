@@ -10,6 +10,15 @@ import subprocess
 import threading
 import time
 from urllib.parse import urlparse, parse_qs
+
+try:
+    import dbus
+    import dbus.service
+    import dbus.mainloop.glib
+    from gi.repository import GLib
+    HAVE_DBUS = True
+except Exception:
+    HAVE_DBUS = False
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -33,6 +42,35 @@ PERSONA = (
 )
 LOCK = threading.Lock()
 SUMMON = {"id": 0.0, "x": 0.0, "y": 0.0}
+STATUS = {"id": 0.0, "state": "idle", "reply": "", "actions": 0, "duration": 0.0}
+ACTIVE_WINDOW = {"x": 0, "y": 0, "w": 0, "h": 0, "caption": "", "cls": ""}
+
+if HAVE_DBUS:
+    class BridgeDBus(dbus.service.Object):
+        def __init__(self):
+            self._bus = dbus.SessionBus()
+            self._name = dbus.service.BusName("org.capri.Bridge", self._bus)
+            super().__init__(self._bus, "/org/capri/Bridge")
+
+        @dbus.service.method("org.capri.Bridge", in_signature="iiiiss", out_signature="")
+        def Window(self, x, y, w, h, caption, cls):
+            ACTIVE_WINDOW.update({
+                "x": int(x), "y": int(y), "w": int(w), "h": int(h),
+                "caption": str(caption), "cls": str(cls),
+            })
+
+    BRIDGE_SERVICE = None
+
+    def start_dbus():
+        global BRIDGE_SERVICE
+        try:
+            print("capri-agent: dbus starting", flush=True)
+            dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
+            BRIDGE_SERVICE = BridgeDBus()
+            print("capri-agent: dbus ready", flush=True)
+            GLib.MainLoop().run()
+        except Exception as exc:
+            print(f"capri-agent: dbus failed: {exc!r}", flush=True)
 
 
 def read_session():
@@ -56,6 +94,8 @@ def run_agent(message, retry=True):
         cmd += ["--session", session]
     cmd.append(PERSONA + "\n\nUser message:\n" + message)
 
+    started = time.time()
+    actions = 0
     try:
         proc = subprocess.run(
             cmd, cwd=str(WORKSPACE), capture_output=True, text=True, timeout=TIMEOUT
@@ -75,8 +115,12 @@ def run_agent(message, retry=True):
         sid = event.get("sessionID")
         if sid:
             new_session = sid
+        etype = str(event.get("type") or "")
+        part = event.get("part") or {}
+        ptype = str(part.get("type") or "")
+        if "tool" in etype.lower() or "tool" in ptype.lower():
+            actions += 1
         if event.get("type") == "text":
-            part = event.get("part") or {}
             text = part.get("text")
             if text:
                 texts.append(text)
@@ -85,6 +129,8 @@ def run_agent(message, retry=True):
 
     if error:
         msg = error.get("message") if isinstance(error, dict) else str(error)
+        STATUS.update({"id": time.time(), "state": "error", "reply": msg or "error",
+                       "actions": actions, "duration": round(time.time() - started, 1)})
         # a stale session should not brick the chat: drop it and retry once
         if retry and session and "session" in str(msg).lower():
             try:
@@ -102,7 +148,10 @@ def run_agent(message, retry=True):
         reply = (proc.stdout or "").strip()
     if proc.returncode != 0 and not reply:
         raise RuntimeError((proc.stderr or "agent failed").strip()[:4000])
-    return reply or "…"
+    reply = reply or "…"
+    STATUS.update({"id": time.time(), "state": "done", "reply": reply[:1200],
+                   "actions": actions, "duration": round(time.time() - started, 1)})
+    return reply
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -128,6 +177,17 @@ class Handler(BaseHTTPRequestHandler):
         parsed = urlparse(self.path)
         if parsed.path == "/health":
             self._json({"ok": True, "model": MODEL, "session": read_session()})
+        elif parsed.path == "/activewindow":
+            self._json(ACTIVE_WINDOW)
+        elif parsed.path == "/status":
+            try:
+                since = float(parse_qs(parsed.query).get("since", ["0"])[0])
+            except Exception:
+                since = 0.0
+            if STATUS["id"] > since:
+                self._json(STATUS)
+            else:
+                self._json({"id": since, "state": "idle", "reply": "", "actions": 0, "duration": 0.0})
         elif parsed.path == "/summon":
             try:
                 since = float(parse_qs(parsed.query).get("since", ["0"])[0])
@@ -182,7 +242,7 @@ class Handler(BaseHTTPRequestHandler):
             text = fmt % args
         except Exception:
             text = str(fmt)
-        if "/summon" in text:
+        if "/summon" in text or "/status" in text or "/activewindow" in text:
             return
         print("capri-agent:", text, flush=True)
 
@@ -190,4 +250,7 @@ class Handler(BaseHTTPRequestHandler):
 if __name__ == "__main__":
     WORKSPACE.mkdir(parents=True, exist_ok=True)
     print(f"capri-agent: model={MODEL} port={PORT} workspace={WORKSPACE}", flush=True)
+    print(f"capri-agent: dbus available={HAVE_DBUS}", flush=True)
+    if HAVE_DBUS:
+        threading.Thread(target=start_dbus, daemon=True).start()
     ThreadingHTTPServer(("127.0.0.1", PORT), Handler).serve_forever()
