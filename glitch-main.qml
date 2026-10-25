@@ -48,6 +48,9 @@ WallpaperItem {
     }
 
     property string clockText: Qt.formatTime(new Date(), "HH:mm")
+    property int barTick: 0
+    property var hackMatrix: ["1C","55","7A","BD","E9","03","F1","2B","77","C4","90","6E","A8","3D","BF","12"]
+    property string hackSeq: "1C 55 7A BD"
     property string secText: Qt.formatTime(new Date(), "ss")
     property string dayText: ["SUNDAY","MONDAY","TUESDAY","WEDNESDAY","THURSDAY","FRIDAY","SATURDAY"][new Date().getDay()]
     property real glitchX: 0
@@ -220,40 +223,6 @@ WallpaperItem {
         return out
     }
 
-    // ring behind her head
-    Canvas {
-        id: haloRing
-        width: 980
-        height: 980
-        x: root.width * 0.845 - width / 2
-        y: root.height * 0.285 - height / 2
-        opacity: 0.14
-        onPaint: {
-            var ctx = getContext("2d")
-            ctx.reset()
-            ctx.strokeStyle = "#ff2038"
-            ctx.lineWidth = 2
-            ctx.beginPath(); ctx.arc(490, 490, 440, 0, Math.PI * 2); ctx.stroke()
-            for (var i = 0; i < 72; i++) {
-                var a = i * Math.PI / 36
-                var r2 = (i % 6 === 0) ? 466 : 452
-                ctx.beginPath()
-                ctx.moveTo(490 + Math.cos(a) * 440, 490 + Math.sin(a) * 440)
-                ctx.lineTo(490 + Math.cos(a) * r2, 490 + Math.sin(a) * r2)
-                ctx.stroke()
-            }
-            ctx.strokeStyle = "#0dff6e"
-            ctx.lineWidth = 3
-            ctx.beginPath(); ctx.arc(490, 490, 440, -0.5, 0.5); ctx.stroke()
-        }
-        RotationAnimator on rotation {
-            from: 0
-            to: 360
-            duration: 48000
-            loops: Animation.Infinite
-        }
-    }
-
     // breathing optic glow
     Item {
         id: opticGlow
@@ -325,6 +294,138 @@ WallpaperItem {
                 NumberAnimation { to: 0.45; duration: 900 + (index % 7) * 160 }
             }
         }
+    }
+
+    // ── breach protocol panel ───────────────────────────────────────
+    Item {
+        id: hackPanel
+        x: 110
+        y: root.height * 0.28
+        width: 500
+        height: 440
+        opacity: 0.9
+
+        Rectangle {
+            anchors.fill: parent
+            color: "#07050a"
+            opacity: 0.55
+            border.color: "#ff2038"
+            border.width: 1
+        }
+
+        // corner brackets
+        Rectangle { x: -6; y: -6; width: 34; height: 3; color: "#0dff6e" }
+        Rectangle { x: -6; y: -6; width: 3; height: 34; color: "#0dff6e" }
+        Rectangle { x: parent.width - 28; y: parent.height + 3; width: 34; height: 3; color: "#ff2038" }
+        Rectangle { x: parent.width + 3; y: parent.height - 28; width: 3; height: 34; color: "#ff2038" }
+
+        Column {
+            anchors.left: parent.left
+            anchors.top: parent.top
+            anchors.margins: 22
+            spacing: 6
+
+            Text {
+                text: "BREACH PROTOCOL"
+                color: "#0dff6e"
+                font.family: "Chakra Petch"
+                font.pixelSize: 22
+                font.letterSpacing: 6
+            }
+            Text {
+                text: "ACCESS POINT // 0x7F4A"
+                color: "#b9a0a8"
+                font.family: "Rajdhani"
+                font.pixelSize: 13
+                font.letterSpacing: 3
+            }
+        }
+
+        Grid {
+            id: hackGrid
+            columns: 4
+            spacing: 12
+            x: 22
+            y: 84
+
+            Repeater {
+                model: 16
+                Text {
+                    required property int index
+                    text: root.hackMatrix[index]
+                    color: (root.hackMatrix[index] === "BD" || index === 5) ? "#ff2038" : "#e2d0d6"
+                    font.family: "DejaVu Sans Mono"
+                    font.pixelSize: 22
+                    font.bold: true
+                }
+            }
+        }
+
+        Column {
+            anchors.left: parent.left
+            anchors.bottom: parent.bottom
+            anchors.margins: 22
+            spacing: 6
+
+            Text {
+                text: "SEQUENCE  " + root.hackSeq
+                color: "#ff2038"
+                font.family: "DejaVu Sans Mono"
+                font.pixelSize: 14
+            }
+            Text {
+                text: "DAEMON UPLOAD"
+                color: "#b9a0a8"
+                font.family: "Rajdhani"
+                font.pixelSize: 12
+                font.letterSpacing: 3
+            }
+            Item {
+                width: 300
+                height: 6
+                Rectangle { anchors.fill: parent; color: "#1c0d14" }
+                Rectangle {
+                    id: uploadFill
+                    height: parent.height
+                    width: 0
+                    color: "#0dff6e"
+                    SequentialAnimation on width {
+                        loops: Animation.Infinite
+                        NumberAnimation { from: 0; to: 300; duration: 2600 }
+                        PauseAnimation { duration: 900 }
+                    }
+                }
+            }
+            Text {
+                text: "ICE // ACTIVE    TRACE " + (12 + (root.barTick % 40)) + "%"
+                color: "#b14cff"
+                font.family: "Rajdhani"
+                font.pixelSize: 12
+                font.letterSpacing: 2
+            }
+        }
+    }
+
+    Timer {
+        interval: 1400
+        running: true
+        repeat: true
+        onTriggered: {
+            var hex = ["1C","55","7A","BD","E9","03","F1","2B","77","C4","90","6E","A8","3D","BF","12"]
+            var out = []
+            for (var i = 0; i < 16; i++) out.push(hex[Math.floor(Math.random() * hex.length)])
+            root.hackMatrix = out
+            var s = []
+            for (var j = 0; j < 4; j++) s.push(hex[Math.floor(Math.random() * hex.length)])
+            root.hackSeq = s.join(" ")
+        }
+    }
+
+    Timer {
+        interval: 900
+        running: true
+        repeat: true
+        onTriggered: root.barTick++
     }
 
     // scanline sweep
