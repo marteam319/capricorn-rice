@@ -38,9 +38,10 @@ PlasmoidItem {
             id: card
             width: 160
             height: 160
-            anchors.centerIn: parent
-            scale: root.hovered ? 1.025 : 1.0
-            Behavior on scale { NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
+            scale: Math.min(outer.width / 160, outer.height / 160)
+            transformOrigin: Item.TopLeft
+            x: (outer.width - 160 * scale) / 2
+            y: (outer.height - 160 * scale) / 2
 
             Canvas {
                 anchors.fill: parent
