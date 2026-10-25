@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Capricorn Terminal
+GenericName=Terminal
+Comment=Cyberpunk Capricorn terminal
+Exec=/home/marteam/.local/bin/capricorn-terminal
+Icon=capricorn-terminal
+Terminal=false
+Categories=System;TerminalEmulator;
+Keywords=terminal;shell;command;capricorn;capri;
+StartupNotify=true
+StartupWMClass=capricorn-terminal

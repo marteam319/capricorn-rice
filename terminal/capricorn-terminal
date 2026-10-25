@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# Branded kitty launcher: Capricorn Terminal.
+args=()
+while [ $# -gt 0 ]; do
+    case "$1" in
+        -e) shift ;;
+        --workdir)
+            if [ $# -ge 2 ]; then
+                args+=(--directory "$2")
+                shift 2
+            else
+                shift
+            fi
+            ;;
+        *) args+=("$1"); shift ;;
+    esac
+done
+exec kitty --class capricorn-terminal --title "CAPRICORN // TERMINAL" "${args[@]}"
