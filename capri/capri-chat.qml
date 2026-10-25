@@ -59,8 +59,8 @@ Window {
     function mainMenu() {
         say("What should I show you?\nPick one, I'll take you there.", [
             { id: "breach", label: "BREACH PROTOCOL" },
-            { id: "wallpapers", label: "WALLPAPERS" },
-            { id: "project", label: "PROJECT FOLDER" },
+            { id: "opencodeTerm", label: "OPENCODE TERMINAL" },
+            { id: "session", label: "START SESSION" },
             { id: "opencode", label: "OPENCODE FOLDER" },
             { id: "nothing", label: "NOTHING, THANKS" }
         ])
@@ -71,12 +71,14 @@ Window {
             exec.run("/home/marteam/.local/bin/capricorn-breach-open.sh")
             say("Breach panel is up.\nTry not to get traced, netrunner.", [])
             closeTimer.restart()
-        } else if (id === "wallpapers") {
-            exec.run("xdg-open /home/marteam/.local/share/wallpapers")
-            say("Wallpapers live in\n~/.local/share/wallpapers.\nI opened the folder.", backOpts())
-        } else if (id === "project") {
-            exec.run("xdg-open /home/marteam/Projekty/cyberpunk-capricorn")
-            say("Opening the Capricorn project.\nDon't break my rice.", backOpts())
+        } else if (id === "opencodeTerm") {
+            exec.run("konsole --workdir /home/marteam/Projekty/cyberpunk-capricorn -e opencode")
+            say("Opening a terminal with OpenCode already running.\nGo break something.", [])
+            closeTimer.restart()
+        } else if (id === "session") {
+            exec.run("/home/marteam/.local/bin/capri-session.sh")
+            say("Starting the session.\nDiscord, Firefox, Spotify, Steam — all up.", [])
+            closeTimer.restart()
         } else if (id === "opencode") {
             exec.run("xdg-open /home/marteam/.config/opencode")
             say("Opening OpenCode's config folder.\nGo build something.", backOpts())

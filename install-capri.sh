@@ -9,6 +9,7 @@ mkdir -p "$HOME/.local/share/capricorn" "$HOME/.local/bin" "$HOME/.local/share/p
 install -m 644 "$ROOT/capri/capri-chat.qml" "$HOME/.local/share/capricorn/capri-chat.qml"
 install -m 644 "$ROOT/capri/capri-avatar.png" "$HOME/.local/share/capricorn/capri-avatar.png"
 install -m 755 "$ROOT/capri/capri-chat-open.sh" "$HOME/.local/bin/capri-chat-open.sh"
+install -m 755 "$ROOT/capri/capri-session.sh" "$HOME/.local/bin/capri-session.sh"
 
 rm -rf "$HOME/.local/share/plasma/plasmoids/com.capricorn.capri"
 cp -r "$ROOT/plasmoid/com.capricorn.capri" "$HOME/.local/share/plasma/plasmoids/com.capricorn.capri"
@@ -16,6 +17,7 @@ cp -r "$ROOT/plasmoid/com.capricorn.capri" "$HOME/.local/share/plasma/plasmoids/
 sed -i "s|/home/marteam|$HOME|g" \
     "$HOME/.local/share/capricorn/capri-chat.qml" \
     "$HOME/.local/bin/capri-chat-open.sh" \
+    "$HOME/.local/bin/capri-session.sh" \
     "$HOME/.local/share/plasma/plasmoids/com.capricorn.capri/contents/ui/main.qml"
 
 systemctl --user restart plasma-plasmashell
