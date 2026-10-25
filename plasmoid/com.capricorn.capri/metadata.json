@@ -1,0 +1,16 @@
+{
+    "KPlugin": {
+        "Id": "com.capricorn.capri",
+        "Name": "Capri Companion",
+        "Description": "A small Capri desktop companion — click her to ask what to open",
+        "Icon": "face-smile",
+        "Category": "Utilities",
+        "License": "GPL-2.0+",
+        "Version": "1.0",
+        "Authors": [
+            { "Name": "marteam319" }
+        ]
+    },
+    "KPackageStructure": "Plasma/Applet",
+    "X-Plasma-API-Minimum-Version": "6.0"
+}
