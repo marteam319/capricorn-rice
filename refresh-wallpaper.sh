@@ -30,6 +30,13 @@ EOF
 )
 qdbus6 org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript "$script"
 
+# keep the animated wallpapers on their screens (this script used to clobber them)
+qdbus6 org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript '
+desktops().forEach(function(d) {
+    if (d.screen === 0) d.wallpaperPlugin = "com.capricorn.glitch";
+    else if (d.screen === 1) d.wallpaperPlugin = "com.capricorn.blackwall";
+});' >/dev/null
+
 # prune old versions, keep the 4 newest of each
 ls -t "$W"/capricorn-character-*.png 2>/dev/null | tail -n +5 | xargs -r rm --
 ls -t "$W"/capricorn-right-glow-*.png 2>/dev/null | tail -n +5 | xargs -r rm --
