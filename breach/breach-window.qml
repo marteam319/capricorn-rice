@@ -1,14 +1,71 @@
 import QtQuick
-import org.kde.plasma.plasmoid
-import org.kde.plasma.core as PlasmaCore
+import QtQuick.Window
 
-PlasmoidItem {
+Window {
     id: root
+    width: 720
+    height: 652
+    visible: true
+    color: "#050503"
+    title: "Breach Protocol"
+    flags: Qt.FramelessWindowHint | Qt.Tool
 
-    preferredRepresentation: fullRepresentation
-    implicitWidth: 720
-    implicitHeight: 620
-    Plasmoid.backgroundHints: PlasmaCore.Types.NoBackground
+    Shortcut {
+        sequence: "Escape"
+        onActivated: Qt.quit()
+    }
+
+    Rectangle {
+        id: chromeBar
+        width: parent.width
+        height: 32
+        color: "#0b0b06"
+
+        Rectangle { x: 0; y: parent.height - 1; width: parent.width; height: 1; color: root.cFaint }
+        Text {
+            x: 12
+            anchors.verticalCenter: parent.verticalCenter
+            text: "BREACH PROTOCOL // ACCESS POINT 0x7F4A"
+            color: root.cLine
+            font.family: "Rajdhani"
+            font.pixelSize: 9
+            font.letterSpacing: 2
+        }
+        Text {
+            anchors.right: parent.right
+            anchors.rightMargin: 42
+            anchors.verticalCenter: parent.verticalCenter
+            text: "NIGHT CITY // " + root.phase.toUpperCase()
+            color: root.cDim
+            font.family: "Rajdhani"
+            font.pixelSize: 8
+            font.letterSpacing: 2
+        }
+        MouseArea {
+            anchors.fill: parent
+            onPressed: root.startSystemMove()
+        }
+        Item {
+            width: 30
+            height: 30
+            anchors.right: parent.right
+            anchors.rightMargin: 4
+            anchors.verticalCenter: parent.verticalCenter
+            Text {
+                anchors.centerIn: parent
+                text: "✕"
+                color: closeMouse.containsMouse ? root.cBright : root.cDim
+                font.pixelSize: 15
+            }
+            MouseArea {
+                id: closeMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: Qt.quit()
+            }
+        }
+    }
 
     // ── Cyberpunk 2077 palette ───────────────────────────────────────
     readonly property color cBright: "#f2f4c0"
@@ -50,8 +107,6 @@ PlasmoidItem {
 
     signal sweepRequested()
 
-    FontLoader { id: chakra; source: "../fonts/ChakraPetch-Bold.ttf" }
-    FontLoader { id: raj; source: "../fonts/Rajdhani-SemiBold.ttf" }
 
     // ── logic ────────────────────────────────────────────────────────
     function randHex() {
@@ -362,12 +417,11 @@ PlasmoidItem {
     }
 
     // ── view ─────────────────────────────────────────────────────────
-    fullRepresentation: Item {
+    Item {
         id: container
-        width: 720
-        height: 620
-        implicitWidth: 720
-        implicitHeight: 620
+        width: root.width
+        height: root.height - 32
+        y: 32
         readonly property real s: Math.min(width / 720, height / 620)
         readonly property real ox: (width - 720 * s) / 2
         readonly property real oy: (height - 620 * s) / 2
@@ -478,7 +532,7 @@ PlasmoidItem {
                 y: 10
                 text: "BREACH PROTOCOL"
                 color: root.cBright
-                font.family: chakra.name
+                font.family: "Chakra Petch"
                 font.pixelSize: 23
                 font.letterSpacing: 7
             }
@@ -487,7 +541,7 @@ PlasmoidItem {
                 y: 42
                 text: "ACCESS POINT // 0x7F4A // NIGHT CITY GRID"
                 color: root.cDim
-                font.family: raj.name
+                font.family: "Rajdhani"
                 font.pixelSize: 9
                 font.letterSpacing: 3
             }
@@ -497,7 +551,7 @@ PlasmoidItem {
                 y: 12
                 text: "NETWATCH // ICE ACTIVE"
                 color: root.cLine
-                font.family: raj.name
+                font.family: "Rajdhani"
                 font.pixelSize: 9
                 font.letterSpacing: 2
             }
@@ -512,7 +566,7 @@ PlasmoidItem {
                     : root.phase === "result" ? "SESSION CLOSED"
                     : "LINK OPEN"
                 color: root.phase === "boot" ? root.cLine : root.cDim
-                font.family: raj.name
+                font.family: "Rajdhani"
                 font.pixelSize: 8
                 font.letterSpacing: 2
             }
@@ -523,7 +577,7 @@ PlasmoidItem {
                 y: 68
                 text: "BREACH TIME REMAINING"
                 color: root.cLine
-                font.family: raj.name
+                font.family: "Rajdhani"
                 font.pixelSize: 9
                 font.letterSpacing: 3
             }
@@ -533,7 +587,7 @@ PlasmoidItem {
                 text: root.timeLeft
                 color: (root.phase === "playing" && root.timeLeft <= 10)
                        ? (root.blink ? root.cDanger : root.cBright) : root.cBright
-                font.family: chakra.name
+                font.family: "Chakra Petch"
                 font.pixelSize: 34
             }
             Row {
@@ -558,7 +612,7 @@ PlasmoidItem {
                 y: 99
                 text: "TRACE " + root.trace + "%"
                 color: root.trace > 70 ? root.cDanger : root.cDim
-                font.family: raj.name
+                font.family: "Rajdhani"
                 font.pixelSize: 9
                 font.letterSpacing: 2
             }
@@ -569,7 +623,7 @@ PlasmoidItem {
                 y: 124
                 text: "BUFFER " + root.buffer.length + "/4"
                 color: root.cLine
-                font.family: raj.name
+                font.family: "Rajdhani"
                 font.pixelSize: 9
                 font.letterSpacing: 3
             }
@@ -629,7 +683,7 @@ PlasmoidItem {
                 y: 188
                 text: "CODE MATRIX"
                 color: root.cLine
-                font.family: raj.name
+                font.family: "Rajdhani"
                 font.pixelSize: 9
                 font.letterSpacing: 3
             }
@@ -871,7 +925,7 @@ PlasmoidItem {
                             verticalAlignment: Text.AlignVCenter
                             text: "START HACKING"
                             color: root.cBright
-                            font.family: chakra.name
+                            font.family: "Chakra Petch"
                             font.pixelSize: 20
                             font.letterSpacing: 4
                         }
@@ -882,7 +936,7 @@ PlasmoidItem {
                         anchors.bottomMargin: 9
                         text: "JACK INTO ACCESS POINT 0x7F4A"
                         color: root.cDim
-                        font.family: raj.name
+                        font.family: "Rajdhani"
                         font.pixelSize: 8
                         font.letterSpacing: 2
                     }
@@ -902,7 +956,7 @@ PlasmoidItem {
                     anchors.bottomMargin: 20
                     text: "ICE LOCKED // BUFFER OFFLINE"
                     color: root.cDim
-                    font.family: raj.name
+                    font.family: "Rajdhani"
                     font.pixelSize: 8
                     font.letterSpacing: 3
                 }
@@ -919,7 +973,7 @@ PlasmoidItem {
                     : root.phase === "upload" ? "FLUSHING BUFFER // UPLOADING"
                     : "CLICK ANYWHERE TO RE-BREACH"
                 color: root.cLine
-                font.family: raj.name
+                font.family: "Rajdhani"
                 font.pixelSize: 9
                 font.letterSpacing: 2
             }
@@ -928,7 +982,7 @@ PlasmoidItem {
                 y: 510
                 text: root.toast
                 color: root.cDanger
-                font.family: raj.name
+                font.family: "Rajdhani"
                 font.pixelSize: 9
                 font.letterSpacing: 2
                 visible: root.toast !== ""
@@ -940,7 +994,7 @@ PlasmoidItem {
                 y: 68
                 text: "SEQUENCE REQUIRED TO UPLOAD"
                 color: root.cLine
-                font.family: raj.name
+                font.family: "Rajdhani"
                 font.pixelSize: 9
                 font.letterSpacing: 2
             }
@@ -953,7 +1007,7 @@ PlasmoidItem {
                 text: root.phase === "choosing" ? "AWAITING START NODE // SELECT ANY CELL"
                     : "NO ACTIVE SEQUENCE // PRESS START HACKING"
                 color: root.cDim
-                font.family: raj.name
+                font.family: "Rajdhani"
                 font.pixelSize: 8
                 font.letterSpacing: 2
                 wrapMode: Text.WordWrap
@@ -979,7 +1033,7 @@ PlasmoidItem {
                             y: 0
                             text: daemonBlock.modelData.name
                             color: root.cBright
-                            font.family: chakra.name
+                            font.family: "Chakra Petch"
                             font.pixelSize: 11
                             font.letterSpacing: 2
                         }
@@ -988,7 +1042,7 @@ PlasmoidItem {
                             y: 0
                             text: root.daemonStatus(daemonBlock.modelData.seq)
                             color: root.hasSequence(daemonBlock.modelData.seq) ? root.cGreen : root.cDim
-                            font.family: raj.name
+                            font.family: "Rajdhani"
                             font.pixelSize: 8
                             font.letterSpacing: 2
                         }
@@ -1051,7 +1105,7 @@ PlasmoidItem {
                 y: 236
                 text: "UPLOAD LINK"
                 color: root.cLine
-                font.family: raj.name
+                font.family: "Rajdhani"
                 font.pixelSize: 9
                 font.letterSpacing: 3
             }
@@ -1078,7 +1132,7 @@ PlasmoidItem {
                     : root.phase === "result" ? (root.won ? "DAEMON INJECTED" : "TRACE LOCKED")
                     : "BUFFER " + root.buffer.length + "/4 // STANDBY"
                 color: root.phase === "result" ? (root.won ? root.cGreen : root.cDanger) : root.cDim
-                font.family: raj.name
+                font.family: "Rajdhani"
                 font.pixelSize: 8
                 font.letterSpacing: 2
             }
@@ -1089,7 +1143,7 @@ PlasmoidItem {
                 y: 300
                 text: "NET LOG // LIVE"
                 color: root.cLine
-                font.family: raj.name
+                font.family: "Rajdhani"
                 font.pixelSize: 9
                 font.letterSpacing: 3
             }
@@ -1124,7 +1178,7 @@ PlasmoidItem {
                 y: 474
                 text: "SYS OK // 0x7F4A"
                 color: root.cDim
-                font.family: raj.name
+                font.family: "Rajdhani"
                 font.pixelSize: 8
                 font.letterSpacing: 2
             }
@@ -1135,7 +1189,7 @@ PlasmoidItem {
                 y: 586
                 text: "ROW → COLUMN → ROW → COLUMN"
                 color: root.cDim
-                font.family: raj.name
+                font.family: "Rajdhani"
                 font.pixelSize: 8
                 font.letterSpacing: 2
             }
@@ -1145,7 +1199,7 @@ PlasmoidItem {
                 y: 586
                 text: "NETWATCH TRACE " + root.trace + "%"
                 color: root.trace > 70 ? root.cDanger : root.cDim
-                font.family: raj.name
+                font.family: "Rajdhani"
                 font.pixelSize: 8
                 font.letterSpacing: 2
             }
@@ -1193,7 +1247,7 @@ PlasmoidItem {
                             : root.won ? "ACCESS GRANTED" : "TRACE COMPLETE"
                         color: root.phase === "upload" ? root.cBright
                              : root.won ? root.cGreen : root.cDanger
-                        font.family: chakra.name
+                        font.family: "Chakra Petch"
                         font.pixelSize: 32
                         font.letterSpacing: 9
                     }
@@ -1203,7 +1257,7 @@ PlasmoidItem {
                             : root.won ? "DAEMON INJECTED INTO NETWORK"
                             : "ICE COUNTERMEASURE TRIGGERED"
                         color: root.cDim
-                        font.family: raj.name
+                        font.family: "Rajdhani"
                         font.pixelSize: 11
                         font.letterSpacing: 3
                     }
@@ -1224,7 +1278,7 @@ PlasmoidItem {
                                 Text {
                                     text: root.statusFor(modelData)
                                     color: root.statusColor(modelData)
-                                    font.family: raj.name
+                                    font.family: "Rajdhani"
                                     font.pixelSize: 12
                                     font.letterSpacing: 2
                                 }
@@ -1248,7 +1302,7 @@ PlasmoidItem {
                             : root.won ? "UPLOAD COMPLETE" : "UPLOAD FAILED"
                         color: root.phase === "upload" ? root.cLine
                              : root.won ? root.cGreen : root.cDanger
-                        font.family: chakra.name
+                        font.family: "Chakra Petch"
                         font.pixelSize: 11
                         font.letterSpacing: 3
                     }
@@ -1257,7 +1311,7 @@ PlasmoidItem {
                         visible: root.phase === "result"
                         text: "CLICK ANYWHERE TO RE-BREACH"
                         color: root.cDim
-                        font.family: raj.name
+                        font.family: "Rajdhani"
                         font.pixelSize: 10
                         font.letterSpacing: 3
                         SequentialAnimation on opacity {

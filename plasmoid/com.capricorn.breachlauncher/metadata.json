@@ -1,8 +1,8 @@
 {
     "KPlugin": {
-        "Id": "com.capricorn.breach",
-        "Name": "Breach Protocol",
-        "Description": "Interactive Cyberpunk 2077-style breach protocol, played directly on the desktop",
+        "Id": "com.capricorn.breachlauncher",
+        "Name": "Breach Protocol Launcher",
+        "Description": "Small desktop button that opens the Breach Protocol panel",
         "Icon": "security-high",
         "Category": "Utilities",
         "License": "GPL-2.0+",
