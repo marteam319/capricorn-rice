@@ -5,26 +5,31 @@ import org.kde.plasma.plasma5support as Plasma5Support
 Window {
     id: root
 
-    width: 380
-    height: 460
+    width: 480
+    height: 680
     visible: true
-    color: "#050308"
-    title: "CAPRI"
-    flags: Qt.FramelessWindowHint | Qt.Tool
+    color: "transparent"
+    title: "Capri // Transmission"
+    flags: Qt.FramelessWindowHint | Qt.Tool | Qt.WindowStaysOnTopHint
 
-    readonly property color cBright: "#f2f4c0"
-    readonly property color cRed: "#ff2038"
-    readonly property color cGreen: "#0dff6e"
-    readonly property color cViolet: "#b14cff"
-    readonly property color cDim: "#8f5a66"
-    readonly property color cBody: "#d9c4cb"
+    readonly property color ink: "#0d0910"
+    readonly property color ink2: "#1a1320"
+    readonly property color paper: "#f7f0f2"
+    readonly property color paper2: "#d8c9cf"
+    readonly property color paper3: "#9a8a93"
+    readonly property color red: "#ff4d60"
+    readonly property color green: "#0dff6e"
+    readonly property color violet: "#8a3cff"
 
-    property string fullMessage: ""
-    property string shownMessage: ""
-    property bool typing: false
-    property int charPos: 0
-    property var options: []
-    property var nextOptions: []
+    property bool busy: false
+    property bool online: false
+    property string status: "LINKING"
+    property string faceFile: "face-smug.png"
+    property int dots: 0
+    property string agentUrl: "http://127.0.0.1:8787"
+
+    readonly property string assetDir: "file:///home/marteam/.local/share/capricorn/assets/"
+    readonly property color accent: busy ? violet : (online ? green : red)
 
     Plasma5Support.DataSource {
         id: exec
@@ -34,297 +39,430 @@ Window {
         function run(cmd) { exec.connectSource(cmd) }
     }
 
+    ListModel { id: chat }
+
     Shortcut {
         sequence: "Escape"
         onActivated: Qt.quit()
     }
 
-    function say(text, opts) {
-        fullMessage = text
-        shownMessage = ""
-        charPos = 0
-        nextOptions = opts
-        options = []
-        typing = true
-        typeTimer.restart()
+    // ── conversation ────────────────────────────────────────────────
+    function addMsg(kind, text) {
+        chat.append({ kind: kind, text: text })
+        Qt.callLater(function () { convo.positionViewAtEnd() })
     }
 
-    function backOpts() {
-        return [
-            { id: "back", label: "BACK" },
-            { id: "close", label: "CLOSE" }
-        ]
+    function setFace(name) {
+        if (faceFile === name) return
+        faceFile = name
+        faceGlitch.restart()
     }
 
-    function mainMenu() {
-        say("What should I show you?\nPick one, I'll take you there.", [
-            { id: "breach", label: "BREACH PROTOCOL" },
-            { id: "opencodeTerm", label: "OPENCODE TERMINAL" },
-            { id: "session", label: "START SESSION" },
-            { id: "opencode", label: "OPENCODE FOLDER" },
-            { id: "nothing", label: "NOTHING, THANKS" }
-        ])
+    function faceFor(text) {
+        var t = (text || "").toLowerCase()
+        if (t.indexOf("error") >= 0 || t.indexOf("failed") >= 0 || t.indexOf("can't") >= 0)
+            return "face-wide.png"
+        if (t.indexOf("?") >= 0) return "face-look.png"
+        if (t.length < 90) return "face-smug.png"
+        if (t.length > 420) return "face-calm.png"
+        return "face-calm.png"
     }
 
-    function act(id) {
-        if (id === "breach") {
-            exec.run("/home/marteam/.local/bin/capricorn-breach-open.sh")
-            say("Breach panel is up.\nTry not to get traced, netrunner.", [])
-            closeTimer.restart()
-        } else if (id === "opencodeTerm") {
-            exec.run("/home/marteam/.local/bin/capri-opencode.sh")
-            say("Opening a terminal with OpenCode already running.\nGo break something.", [])
-            closeTimer.restart()
-        } else if (id === "session") {
-            exec.run("/home/marteam/.local/bin/capri-session.sh")
-            say("Starting the session.\nDiscord, Firefox, Spotify, Steam — all up.", [])
-            closeTimer.restart()
-        } else if (id === "opencode") {
-            exec.run("xdg-open /home/marteam/.config/opencode")
-            say("Opening OpenCode's config folder.\nGo build something.", backOpts())
-        } else if (id === "back") {
-            mainMenu()
-        } else if (id === "nothing") {
-            say("Fine. I'll be on the wallpaper.", [
-                { id: "close", label: "CLOSE" }
-            ])
-        } else if (id === "close") {
-            Qt.quit()
+    function checkAgent() {
+        var x = new XMLHttpRequest()
+        x.open("GET", agentUrl + "/health")
+        x.timeout = 4000
+        x.onreadystatechange = function () {
+            if (x.readyState !== XMLHttpRequest.DONE) return
+            online = (x.status === 200)
+            status = busy ? "THINKING" : (online ? "LINKED" : "OFFLINE")
         }
+        x.send()
+    }
+
+    function send() {
+        var text = input.text.trim()
+        if (text.length === 0 || busy) return
+        addMsg("user", text)
+        input.text = ""
+        busy = true
+        status = "THINKING"
+        dots = 0
+        thinkTimer.restart()
+        setFace("face-aside.png")
+
+        var x = new XMLHttpRequest()
+        x.open("POST", agentUrl + "/chat")
+        x.setRequestHeader("Content-Type", "application/json")
+        x.timeout = 320000
+        x.onreadystatechange = function () {
+            if (x.readyState !== XMLHttpRequest.DONE) return
+            busy = false
+            thinkTimer.stop()
+            dots = 0
+            if (x.status === 200) {
+                online = true
+                try {
+                    var data = JSON.parse(x.responseText)
+                    if (data.reply) {
+                        addMsg("capri", data.reply)
+                        setFace(faceFor(data.reply))
+                    } else {
+                        addMsg("error", "AGENT // " + (data.error || "empty reply"))
+                        setFace("face-wide.png")
+                    }
+                } catch (e) {
+                    addMsg("error", "AGENT // malformed reply")
+                    setFace("face-wide.png")
+                }
+            } else {
+                online = false
+                addMsg("error", "AGENT OFFLINE // start it with: systemctl --user start capri-agent")
+                setFace("face-wide.png")
+            }
+            status = online ? "LINKED" : "OFFLINE"
+        }
+        x.ontimeout = function () {
+            busy = false
+            thinkTimer.stop()
+            dots = 0
+            addMsg("error", "AGENT TIMEOUT // still busy, try again in a moment")
+            setFace("face-wide.png")
+            status = online ? "LINKED" : "OFFLINE"
+        }
+        x.send(JSON.stringify({ message: text }))
+    }
+
+    function quickAction(cmd) {
+        exec.run(cmd)
+    }
+
+    function startAgent() {
+        exec.run("systemctl --user start capri-agent.service")
+        status = "LINKING"
+        healthTimer.restart()
     }
 
     Timer {
-        id: typeTimer
-        interval: 18
+        id: healthTimer
+        interval: 1800
+        onTriggered: root.checkAgent()
+    }
+
+    Timer {
+        id: thinkTimer
+        interval: 380
         repeat: true
         running: false
-        onTriggered: {
-            root.charPos++
-            root.shownMessage = root.fullMessage.slice(0, root.charPos)
-            if (root.charPos >= root.fullMessage.length) {
-                typeTimer.stop()
-                root.typing = false
-                root.options = root.nextOptions
-            }
-        }
+        onTriggered: root.dots = (root.dots + 1) % 4
     }
 
-    Timer {
-        id: closeTimer
-        interval: 1700
-        onTriggered: Qt.quit()
+    Component.onCompleted: {
+        addMsg("sys", "SESSION LINKED // NIGHT CITY")
+        addMsg("capri", "Hey. Capri here.\nTuned in. What are we doing?")
+        setFace("face-smug.png")
+        checkAgent()
+        input.forceActiveFocus()
     }
 
-    Component.onCompleted: mainMenu()
-
-    // ── frame ────────────────────────────────────────────────────────
-    Rectangle {
-        anchors.fill: parent
-        border.color: root.cRed
-        border.width: 1
-        gradient: Gradient {
-            GradientStop { position: 0.0; color: "#0c0710" }
-            GradientStop { position: 0.55; color: "#08050a" }
-            GradientStop { position: 1.0; color: "#10060c" }
-        }
-    }
-
+    // ── panel plate ─────────────────────────────────────────────────
     Canvas {
         anchors.fill: parent
-        opacity: 0.45
         onPaint: {
             var ctx = getContext("2d")
             ctx.reset()
-            ctx.strokeStyle = "rgba(255,32,56,0.07)"
-            ctx.lineWidth = 1
-            for (var yy = 0; yy < height; yy += 4) {
+            var x = 14, y = 14, w = 452, h = 652
+
+            function plate(dx, dy, fill) {
                 ctx.beginPath()
-                ctx.moveTo(0, yy + 0.5)
-                ctx.lineTo(width, yy + 0.5)
-                ctx.stroke()
+                ctx.moveTo(x + dx, y + 14 + dy)
+                ctx.lineTo(x + 14 + dx, y + dy)
+                ctx.lineTo(x + w * 0.61 + dx, y + dy)
+                ctx.lineTo(x + w * 0.63 + dx, y + 7 + dy)
+                ctx.lineTo(x + w * 0.655 + dx, y + dy)
+                ctx.lineTo(x + w - 30 + dx, y + dy)
+                ctx.lineTo(x + w + dx, y + 30 + dy)
+                ctx.lineTo(x + w + dx, y + h + dy)
+                ctx.lineTo(x + 22 + dx, y + h + dy)
+                ctx.lineTo(x + dx, y + h - 22 + dy)
+                ctx.closePath()
+                ctx.fillStyle = fill
+                ctx.fill()
             }
+
+            plate(7, 7, root.violet)
+            plate(0, 0, root.ink)
         }
-        onWidthChanged: requestPaint()
-        onHeightChanged: requestPaint()
     }
 
-    Rectangle { x: 6; y: 6; width: 22; height: 2; color: root.cGreen }
-    Rectangle { x: 6; y: 6; width: 2; height: 22; color: root.cGreen }
-    Rectangle { x: parent.width - 28; y: parent.height - 8; width: 22; height: 2; color: root.cRed }
-    Rectangle { x: parent.width - 8; y: parent.height - 28; width: 2; height: 22; color: root.cRed }
-
-    // ── header ───────────────────────────────────────────────────────
+    // ── header ──────────────────────────────────────────────────────
     Rectangle {
-        id: header
-        width: parent.width
-        height: 48
-        color: "#0b0710"
-
-        Rectangle { x: 0; y: parent.height - 1; width: parent.width; height: 1; color: "#3a1622" }
-
-        Image {
-            x: 14
-            y: 9
-            width: 30
-            height: 30
-            source: "file:///home/marteam/.local/share/capricorn/capri-avatar.png"
-            fillMode: Image.PreserveAspectCrop
-        }
-        Rectangle {
-            x: 14
-            y: 9
-            width: 30
-            height: 30
-            color: "transparent"
-            border.color: root.cRed
-            border.width: 1
-        }
-        Text {
-            x: 54
-            y: 8
-            text: "CAPRI"
-            color: root.cBright
-            font.family: "Chakra Petch"
-            font.pixelSize: 16
-            font.letterSpacing: 5
-        }
-        Rectangle { x: 54; y: 30; width: 5; height: 5; radius: 2.5; color: root.cGreen }
-        Text {
-            x: 65
-            y: 26
-            text: "LINKED // NIGHT CITY"
-            color: root.cDim
-            font.family: "Rajdhani"
-            font.pixelSize: 8
-            font.letterSpacing: 2
-        }
-
-        MouseArea {
-            anchors.fill: parent
-            onPressed: root.startSystemMove()
-        }
-        Item {
-            width: 30
-            height: 30
-            anchors.right: parent.right
-            anchors.rightMargin: 8
-            anchors.verticalCenter: parent.verticalCenter
-            Text {
-                anchors.centerIn: parent
-                text: "✕"
-                color: closeMouse.containsMouse ? root.cBright : root.cDim
-                font.pixelSize: 15
-            }
-            MouseArea {
-                id: closeMouse
-                anchors.fill: parent
-                hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
-                onClicked: Qt.quit()
-            }
-        }
+        x: 32; y: 28; width: 64; height: 64
+        color: root.violet
     }
-
-    // ── message ──────────────────────────────────────────────────────
-    Text {
-        id: message
-        x: 18
-        y: 66
-        width: 344
-        height: 100
-        text: root.shownMessage
-        color: root.cBody
-        font.family: "Rajdhani"
-        font.pixelSize: 12
-        lineHeight: 1.3
-        wrapMode: Text.WordWrap
-        textFormat: Text.PlainText
+    Image {
+        id: face
+        x: 28; y: 24; width: 64; height: 64
+        source: root.assetDir + root.faceFile
+        fillMode: Image.PreserveAspectCrop
+        smooth: true
+    }
+    Rectangle {
+        x: 28; y: 24; width: 64; height: 64
+        color: "transparent"
+        border.color: root.ink
+        border.width: 1
+    }
+    SequentialAnimation {
+        id: faceGlitch
+        NumberAnimation { target: face; property: "x"; to: 34; duration: 35 }
+        NumberAnimation { target: face; property: "y"; to: 20; duration: 35 }
+        NumberAnimation { target: face; property: "x"; to: 24; duration: 35 }
+        NumberAnimation { target: face; property: "y"; to: 26; duration: 35 }
+        NumberAnimation { target: face; property: "x"; to: 28; duration: 45 }
+        NumberAnimation { target: face; property: "y"; to: 24; duration: 45 }
     }
 
     Text {
-        x: 18
-        y: 166
-        visible: root.typing
-        text: "..."
-        color: root.cGreen
+        x: 106; y: 20
+        text: "CAPRI"
+        color: root.paper
         font.family: "Chakra Petch"
-        font.pixelSize: 11
+        font.pixelSize: 22
         font.letterSpacing: 3
-        SequentialAnimation on opacity {
-            loops: Animation.Infinite
-            NumberAnimation { to: 0.2; duration: 380 }
-            NumberAnimation { to: 1.0; duration: 380 }
+    }
+    Text {
+        x: 106; y: 48
+        text: "TRANSMISSION  /  PROJECT CAPRICORN"
+        color: root.paper3
+        font.family: "JetBrains Mono"
+        font.pixelSize: 8
+        font.letterSpacing: 1
+    }
+    Text {
+        x: 106; y: 64
+        text: root.busy ? "CAPRI IS THINKING" + ".".repeat(root.dots + 1)
+                       : (root.online ? "AGENT LINKED // 127.0.0.1:8787"
+                                      : "AGENT OFFLINE // CLICK AGENT TO START")
+        color: root.busy ? root.violet : (root.online ? root.green : root.red)
+        font.family: "JetBrains Mono"
+        font.pixelSize: 8
+    }
+
+    Rectangle {
+        x: 384; y: 24; width: 70; height: 18
+        color: root.accent
+        Text {
+            anchors.centerIn: parent
+            text: root.busy ? "THINKING" : (root.online ? "LINKED" : "OFFLINE")
+            color: root.ink
+            font.family: "JetBrains Mono"
+            font.pixelSize: 7
+            font.bold: true
+            font.letterSpacing: 1
         }
     }
 
-    // ── options ──────────────────────────────────────────────────────
-    Column {
-        id: optionColumn
-        x: 18
-        y: 180
-        width: 344
-        spacing: 8
+    Item {
+        x: 438; y: 18; width: 26; height: 26
+        Text {
+            anchors.centerIn: parent
+            text: "✕"
+            color: closeHover.containsMouse ? root.paper : root.paper3
+            font.family: "DejaVu Sans"
+            font.pixelSize: 14
+        }
+        MouseArea {
+            id: closeHover
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: Qt.quit()
+        }
+    }
 
-        Repeater {
-            model: root.options
+    MouseArea {
+        x: 20; y: 18; width: 412; height: 80
+        onPressed: root.startSystemMove()
+    }
+
+    Rectangle {
+        x: 28; y: 102; width: 424; height: 1
+        color: "#2a1e33"
+    }
+
+    // ── conversation ────────────────────────────────────────────────
+    ListView {
+        id: convo
+        x: 28; y: 112; width: 424; height: 408
+        clip: true
+        spacing: 10
+        model: chat
+        boundsBehavior: Flickable.StopAtBounds
+
+        delegate: Item {
+            width: ListView.view.width
+            height: model.kind === "sys" || model.kind === "error"
+                    ? txt.implicitHeight + 8
+                    : txt.implicitHeight + 26
 
             Rectangle {
-                required property var modelData
-                width: 344
-                height: 36
-                color: optHover.containsMouse ? "#260c16" : "#120810"
-                border.color: optHover.containsMouse ? root.cRed : "#4a1622"
+                visible: model.kind === "capri"
+                x: 0; y: 0; width: 2; height: parent.height - 6
+                color: root.violet
+            }
+            Rectangle {
+                visible: model.kind === "user"
+                x: parent.width - txt.width - 24
+                y: 0
+                width: txt.width + 24
+                height: txt.implicitHeight + 16
+                color: root.ink2
+                border.color: "#2e2138"
                 border.width: 1
-                Behavior on color { ColorAnimation { duration: 110 } }
+            }
+
+            Text {
+                id: txt
+                x: model.kind === "user" ? parent.width - width - 12 : 12
+                y: model.kind === "user" ? 8 : (model.kind === "capri" ? 2 : 2)
+                width: model.kind === "user" ? Math.min(340, parent.width - 60) : parent.width - 20
+                text: model.text
+                textFormat: Text.PlainText
+                wrapMode: Text.Wrap
+                color: model.kind === "error" ? root.red
+                     : model.kind === "sys" ? root.green
+                     : model.kind === "user" ? root.paper
+                     : root.paper2
+                font.family: (model.kind === "capri" && model.text.length < 140)
+                             ? "Chakra Petch" : "JetBrains Mono"
+                font.pixelSize: model.kind === "sys" || model.kind === "error" ? 8.5
+                              : (model.kind === "user" ? 10 : (model.text.length < 140 ? 13 : 10.5))
+                lineHeight: 1.35
+            }
+        }
+
+        onCountChanged: Qt.callLater(function () { positionViewAtEnd() })
+    }
+
+    // ── quick actions ───────────────────────────────────────────────
+    Row {
+        x: 28; y: 532; spacing: 8
+        Repeater {
+            model: [
+                { label: "BREACH", cmd: "/home/marteam/.local/bin/capricorn-breach-open.sh" },
+                { label: "SESSION", cmd: "/home/marteam/.local/bin/capri-session.sh" },
+                { label: "OPENCODE", cmd: "/home/marteam/.local/bin/capri-opencode.sh" },
+                { label: "AGENT", cmd: "agent" }
+            ]
+            Rectangle {
+                required property var modelData
+                width: 96; height: 28
+                color: qHover.containsMouse ? root.violet : root.ink2
+                border.color: qHover.containsMouse ? root.paper : "#3a2a44"
+                border.width: 1
+                Behavior on color { ColorAnimation { duration: 100 } }
 
                 Text {
-                    x: 12
-                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.centerIn: parent
                     text: modelData.label
-                    color: optHover.containsMouse ? root.cBright : root.cBody
+                    color: qHover.containsMouse ? root.ink : root.paper2
                     font.family: "Chakra Petch"
-                    font.pixelSize: 10
-                    font.letterSpacing: 2
+                    font.pixelSize: 8
+                    font.letterSpacing: 1
                 }
-                Text {
-                    anchors.right: parent.right
-                    anchors.rightMargin: 12
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: ">"
-                    color: optHover.containsMouse ? root.cGreen : root.cRed
-                    font.family: "Chakra Petch"
-                    font.pixelSize: 12
-                }
-
                 MouseArea {
-                    id: optHover
+                    id: qHover
                     anchors.fill: parent
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: root.act(modelData.id)
+                    onClicked: modelData.cmd === "agent" ? root.startAgent() : root.quickAction(modelData.cmd)
                 }
             }
         }
     }
 
-    // ── footer ───────────────────────────────────────────────────────
+    // ── input ───────────────────────────────────────────────────────
+    Rectangle {
+        x: 28; y: 574; width: 344; height: 40
+        color: root.ink2
+        border.color: input.activeFocus ? root.violet : "#3a2a44"
+        border.width: 1
+        opacity: root.busy ? 0.55 : 1
+
+        Rectangle {
+            x: 0; y: 0; width: 2; height: parent.height
+            color: root.accent
+        }
+
+        Text {
+            x: 12; y: 12
+            visible: input.text.length === 0
+            text: root.busy ? "waiting for Capri..." : "Tell Capri what to do..."
+            color: root.paper3
+            font.family: "JetBrains Mono"
+            font.pixelSize: 10
+        }
+
+        TextInput {
+            id: input
+            x: 12; y: 10
+            width: parent.width - 24
+            height: 22
+            color: root.paper
+            selectionColor: root.violet
+            selectedTextColor: root.paper
+            font.family: "JetBrains Mono"
+            font.pixelSize: 11
+            clip: true
+            enabled: !root.busy
+            onAccepted: root.send()
+            Keys.onPressed: function (event) {
+                if (event.key === Qt.Key_Escape) Qt.quit()
+            }
+        }
+    }
+
+    Rectangle {
+        x: 380; y: 574; width: 72; height: 40
+        color: root.busy ? root.ink2 : root.red
+        border.color: root.busy ? "#3a2a44" : root.red
+        border.width: 1
+        opacity: root.busy ? 0.5 : 1
+
+        Text {
+            anchors.centerIn: parent
+            text: "▶ SEND"
+            color: root.busy ? root.paper3 : root.ink
+            font.family: "Chakra Petch"
+            font.pixelSize: 9
+            font.letterSpacing: 1
+        }
+        MouseArea {
+            anchors.fill: parent
+            enabled: !root.busy
+            cursorShape: Qt.PointingHandCursor
+            onClicked: root.send()
+        }
+    }
+
+    // ── footer ──────────────────────────────────────────────────────
     Text {
-        x: 18
-        y: 432
-        text: "CAPRI // DESKTOP COMPANION"
-        color: root.cDim
-        font.family: "Rajdhani"
-        font.pixelSize: 8
-        font.letterSpacing: 2
+        x: 28; y: 640
+        text: "CAPRI // DESKTOP CONSTRUCT"
+        color: root.paper3
+        font.family: "JetBrains Mono"
+        font.pixelSize: 7
+        font.letterSpacing: 1
     }
     Text {
         anchors.right: parent.right
-        anchors.rightMargin: 18
-        y: 432
+        anchors.rightMargin: 28
+        y: 640
         text: "ESC // CLOSE"
-        color: root.cDim
-        font.family: "Rajdhani"
-        font.pixelSize: 8
-        font.letterSpacing: 2
+        color: root.paper3
+        font.family: "JetBrains Mono"
+        font.pixelSize: 7
+        font.letterSpacing: 1
     }
 }

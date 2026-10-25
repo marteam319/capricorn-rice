@@ -1,26 +1,44 @@
 #!/usr/bin/env bash
-# Install the Capri desktop companion (pet widget + floating dialogue).
+# Install the Capri desktop construct: transmission chat, roaming pet, agent bridge.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 
-mkdir -p "$HOME/.local/share/capricorn" "$HOME/.local/bin" "$HOME/.local/share/plasma/plasmoids"
+# stop old companion processes so they load the new files
+pkill -f '^qml6 .*capri-chat\.qml$' 2>/dev/null || true
+pkill -f '^qml6 .*capri-pet\.qml$' 2>/dev/null || true
 
+mkdir -p "$HOME/.local/share/capricorn/assets" "$HOME/.local/share/capricorn/workspace" \
+         "$HOME/.local/bin" "$HOME/.local/share/plasma/plasmoids" \
+         "$HOME/.config/systemd/user" "$HOME/.config/autostart"
+
+install -m 644 "$ROOT"/capri/assets/* "$HOME/.local/share/capricorn/assets/"
 install -m 644 "$ROOT/capri/capri-chat.qml" "$HOME/.local/share/capricorn/capri-chat.qml"
-install -m 644 "$ROOT/capri/capri-avatar.png" "$HOME/.local/share/capricorn/capri-avatar.png"
+install -m 644 "$ROOT/capri/capri-pet.qml" "$HOME/.local/share/capricorn/capri-pet.qml"
+install -m 644 "$ROOT/capri/AGENTS.md" "$HOME/.local/share/capricorn/workspace/AGENTS.md"
+install -m 755 "$ROOT/capri/capri-agent.py" "$HOME/.local/share/capricorn/capri-agent.py"
 install -m 755 "$ROOT/capri/capri-chat-open.sh" "$HOME/.local/bin/capri-chat-open.sh"
-install -m 755 "$ROOT/capri/capri-session.sh" "$HOME/.local/bin/capri-session.sh"
+install -m 755 "$ROOT/capri/capri-pet-open.sh" "$HOME/.local/bin/capri-pet-open.sh"
 install -m 755 "$ROOT/capri/capri-opencode.sh" "$HOME/.local/bin/capri-opencode.sh"
+install -m 755 "$ROOT/capri/capri-session.sh" "$HOME/.local/bin/capri-session.sh"
+install -m 644 "$ROOT/capri/capri-agent.service" "$HOME/.config/systemd/user/capri-agent.service"
+install -m 644 "$ROOT/capri/capri-pet.desktop" "$HOME/.config/autostart/capri-pet.desktop"
 
 rm -rf "$HOME/.local/share/plasma/plasmoids/com.capricorn.capri"
 cp -r "$ROOT/plasmoid/com.capricorn.capri" "$HOME/.local/share/plasma/plasmoids/com.capricorn.capri"
 
 sed -i "s|/home/marteam|$HOME|g" \
     "$HOME/.local/share/capricorn/capri-chat.qml" \
+    "$HOME/.local/share/capricorn/capri-pet.qml" \
     "$HOME/.local/bin/capri-chat-open.sh" \
-    "$HOME/.local/bin/capri-session.sh" \
     "$HOME/.local/bin/capri-opencode.sh" \
+    "$HOME/.local/bin/capri-session.sh" \
+    "$HOME/.config/autostart/capri-pet.desktop" \
     "$HOME/.local/share/plasma/plasmoids/com.capricorn.capri/contents/ui/main.qml"
+
+systemctl --user daemon-reload
+systemctl --user enable --now capri-agent.service
+systemctl --user restart capri-agent.service
 
 systemctl --user restart plasma-plasmashell
 sleep 4
@@ -33,4 +51,9 @@ for (var i = 0; i < ws.length; i++) if (ws[i].type === "com.capricorn.capri") fo
 if (!found) d.addWidget("com.capricorn.capri", 32, 430, 176, 176)
 ' >/dev/null 2>&1 || true
 
-echo "Capri companion installed. Click the pet to open her dialogue."
+"$HOME/.local/bin/capri-pet-open.sh"
+
+echo "Capri installed."
+echo "  chat:  click the portrait widget or the roaming pet"
+echo "  agent: systemctl --user status capri-agent"
+echo "  model: CAPRI_MODEL (default opencode-go/deepseek-v4.1-flash)"

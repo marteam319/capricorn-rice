@@ -1,0 +1,12 @@
+[Unit]
+Description=Capri / OpenCode agent bridge
+After=default.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 %h/.local/share/capricorn/capri-agent.py
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=default.target

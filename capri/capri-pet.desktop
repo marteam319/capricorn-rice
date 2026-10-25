@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Capri Pet
+Comment=Project Capricorn desktop construct
+Exec=/home/marteam/.local/bin/capri-pet-open.sh
+Terminal=false
+NoDisplay=true
+X-GNOME-Autostart-enabled=true
