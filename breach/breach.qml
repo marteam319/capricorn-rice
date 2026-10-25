@@ -11,10 +11,19 @@ Window {
 
     property int timeLeft: 40
     property var matrix: []
+
+    // required upload sequence (3 codes, always reachable through the line rule)
     property var target: []
+
     property var buffer: []
-    property string state: "playing"
+    property string state: "playing"      // playing | won | lost
+
+    // line rule: first pick is a COLUMN pick (column 0), then alternate ROW/COLUMN
+    property string pickMode: "column"    // which line the next pick must be on
+    property int lastRow: -1
+    property int lastCol: 0
     property int lastPicked: -1
+    property int rev: 0                   // bumped on every pick to refresh bindings
 
     FontLoader { id: chakra; source: "file:///home/marteam/.local/share/fonts/cyberpunk/ChakraPetch-Bold.ttf" }
     FontLoader { id: raj; source: "file:///home/marteam/.local/share/fonts/cyberpunk/Rajdhani-SemiBold.ttf" }
@@ -28,30 +37,69 @@ Window {
         var m = []
         for (var i = 0; i < 36; i++) m.push(randHex())
         matrix = m
-        var t = []
-        for (var j = 0; j < 3; j++) t.push(m[Math.floor(Math.random() * 36)])
-        target = t
+
+        // build a guaranteed-valid path: column 0 -> same row -> same column
+        var r0 = Math.floor(Math.random() * 6)
+        var c1 = Math.floor(Math.random() * 6)
+        var r2 = Math.floor(Math.random() * 6)
+        target = [ m[r0 * 6], m[r0 * 6 + c1], m[r2 * 6 + c1] ]
+
         buffer = []
-        lastPicked = -1
-        timeLeft = 40
         state = "playing"
+        pickMode = "column"
+        lastRow = -1
+        lastCol = 0
+        lastPicked = -1
+        rev++
+        timeLeft = 40
         tick.start()
+        scene.forceActiveFocus()
+    }
+
+    // is cell index selectable under the current line rule?
+    function isAllowed(index) {
+        if (state !== "playing") return false
+        var r = Math.floor(index / 6)
+        var c = index % 6
+        if (pickMode === "column") return c === lastCol
+        return r === lastRow
     }
 
     function pick(index) {
-        if (state !== "playing") return
+        if (!isAllowed(index)) return
+
+        var r = Math.floor(index / 6)
+        var c = index % 6
+
         lastPicked = index
+        lastRow = r
+        lastCol = c
+        pickMode = (pickMode === "column") ? "row" : "column"
+
         var next = buffer.slice()
         next.push(matrix[index])
         buffer = next
+        rev++
+
         if (next.length >= target.length &&
             next.slice(next.length - target.length).join(",") === target.join(",")) {
             state = "won"
             tick.stop()
-        } else if (next.length >= 4) {
+            return
+        }
+        if (next.length >= 4) {
             state = "lost"
             tick.stop()
         }
+    }
+
+    // how many codes of the required sequence are already matched, in order
+    function matchedCount() {
+        var m = 0
+        for (var i = 0; i < buffer.length && m < target.length; i++) {
+            if (buffer[i] === target[m]) m++
+        }
+        return m
     }
 
     Component.onCompleted: newGame()
@@ -80,7 +128,6 @@ Window {
             if (event.key === Qt.Key_Escape) Qt.quit()
         }
 
-        // backdrop
         Rectangle { anchors.fill: parent; color: "#050308" }
         Rectangle {
             anchors.fill: parent
@@ -91,8 +138,10 @@ Window {
             }
             opacity: 0.9
         }
+
+        // sweeping scanline
         Rectangle {
-            width: parent.width
+            width: scene.width
             height: 2
             color: "#ff2038"
             opacity: 0.08
@@ -135,6 +184,12 @@ Window {
             font.family: raj.name
             font.pixelSize: 14
             font.letterSpacing: 3
+            MouseArea {
+                anchors.fill: parent
+                anchors.margins: -8
+                cursorShape: Qt.PointingHandCursor
+                onClicked: Qt.quit()
+            }
         }
 
         // ── timer ────────────────────────────────────────────────────
@@ -173,7 +228,7 @@ Window {
             }
         }
 
-        // ── matrix ───────────────────────────────────────────────────
+        // ── code matrix ──────────────────────────────────────────────
         Grid {
             id: grid
             columns: 6
@@ -187,16 +242,23 @@ Window {
                 model: 36
                 Rectangle {
                     required property int index
+                    readonly property bool allowed: (root.rev, root.isAllowed(index))
+                    readonly property bool picked: index === root.lastPicked
+
                     width: 92
                     height: 56
-                    color: hover.containsMouse ? "#2a0a14" : "#0d0710"
-                    border.color: index === root.lastPicked ? "#0dff6e" : "#2a1220"
-                    border.width: 1
+                    color: picked ? "#2a0a14"
+                         : hover.containsMouse && allowed ? "#220812"
+                         : allowed ? "#140910" : "#08050a"
+                    border.color: picked ? "#0dff6e"
+                                : allowed ? "#ff2038" : "#1a0c14"
+                    border.width: allowed ? 1 : 1
+                    opacity: allowed ? 1.0 : 0.38
 
                     Text {
                         anchors.centerIn: parent
                         text: root.matrix[index]
-                        color: "#e2d0d6"
+                        color: picked ? "#0dff6e" : "#e2d0d6"
                         font.family: chakra.name
                         font.pixelSize: 22
                         font.letterSpacing: 2
@@ -206,10 +268,26 @@ Window {
                         id: hover
                         anchors.fill: parent
                         hoverEnabled: true
+                        cursorShape: parent.allowed ? Qt.PointingHandCursor : Qt.ArrowCursor
                         onClicked: root.pick(index)
                     }
                 }
             }
+        }
+
+        // line-rule hint
+        Text {
+            anchors.left: parent.left
+            anchors.top: grid.bottom
+            anchors.leftMargin: 46
+            anchors.topMargin: 14
+            text: root.state !== "playing" ? " "
+                : root.pickMode === "column" ? "LINE RULE // SELECT FROM COLUMN " + (root.lastCol + 1)
+                : "LINE RULE // SELECT FROM ROW " + (root.lastRow + 1)
+            color: "#b14cff"
+            font.family: raj.name
+            font.pixelSize: 14
+            font.letterSpacing: 3
         }
 
         // ── right column ─────────────────────────────────────────────
@@ -233,15 +311,17 @@ Window {
                     model: 3
                     Rectangle {
                         required property int index
+                        readonly property bool done: (root.rev, root.matchedCount() > index)
                         width: 76
                         height: 56
-                        color: "#12080f"
-                        border.color: root.state === "won" ? "#0dff6e" : "#ff2038"
+                        color: done ? "#08240f" : "#12080f"
+                        border.color: done ? "#0dff6e"
+                                    : root.state === "won" ? "#0dff6e" : "#ff2038"
                         border.width: 1
                         Text {
                             anchors.centerIn: parent
                             text: root.target.length > index ? root.target[index] : "--"
-                            color: "#f4eff1"
+                            color: parent.done ? "#0dff6e" : "#f4eff1"
                             font.family: chakra.name
                             font.pixelSize: 22
                         }
@@ -250,7 +330,7 @@ Window {
             }
 
             Text {
-                text: "BUFFER"
+                text: "BUFFER  " + root.buffer.length + " / 4"
                 color: "#b9a0a8"
                 font.family: raj.name
                 font.pixelSize: 15
@@ -262,14 +342,15 @@ Window {
                     model: 4
                     Rectangle {
                         required property int index
+                        readonly property bool used: root.buffer.length > index
                         width: 76
                         height: 56
-                        color: "#0d0710"
-                        border.color: "#2a1220"
+                        color: used ? "#140910" : "#0d0710"
+                        border.color: used ? "#3a1a26" : "#2a1220"
                         border.width: 1
                         Text {
                             anchors.centerIn: parent
-                            text: root.buffer.length > index ? root.buffer[index] : ""
+                            text: used ? root.buffer[index] : ""
                             color: "#0dff6e"
                             font.family: chakra.name
                             font.pixelSize: 22
@@ -279,7 +360,7 @@ Window {
             }
 
             Text {
-                text: root.state === "playing" ? "SELECT CODES"
+                text: root.state === "playing" ? "SELECT CODES IN LINE"
                     : root.state === "won" ? "UPLOAD COMPLETE // DAEMON INJECTED"
                     : "TRACE COMPLETE // CONNECTION LOST"
                 color: root.state === "won" ? "#0dff6e"
@@ -292,7 +373,7 @@ Window {
             Rectangle {
                 width: 220
                 height: 44
-                color: "#ff2038"
+                color: root.state === "won" ? "#0dff6e" : "#ff2038"
                 visible: root.state !== "playing"
                 Text {
                     anchors.centerIn: parent
@@ -304,10 +385,18 @@ Window {
                 }
                 MouseArea {
                     anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
                     onClicked: root.newGame()
                 }
             }
-        }
 
+            Text {
+                text: "ROW → COLUMN → ROW → COLUMN"
+                color: "#4a3640"
+                font.family: raj.name
+                font.pixelSize: 12
+                font.letterSpacing: 3
+            }
+        }
     }
 }
