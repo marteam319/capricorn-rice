@@ -1,0 +1,16 @@
+{
+    "KPlugin": {
+        "Id": "com.capricorn.breach",
+        "Name": "Breach Protocol",
+        "Description": "Interactive Cyberpunk 2077-style breach protocol, played directly on the desktop",
+        "Icon": "security-high",
+        "Category": "Utilities",
+        "License": "GPL-2.0+",
+        "Version": "1.0",
+        "Authors": [
+            { "Name": "marteam319" }
+        ]
+    },
+    "KPackageStructure": "Plasma/Applet",
+    "X-Plasma-API-Minimum-Version": "6.0"
+}
