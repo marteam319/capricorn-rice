@@ -11,7 +11,7 @@ Window {
     visible: true
     color: "transparent"
     title: "CAPRI // PROJECT CAPRICORN"
-    flags: Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool
+    flags: Qt.FramelessWindowHint | Qt.WindowStaysOnBottomHint | Qt.Tool
 
     readonly property string assets: "file:///home/marteam/.local/share/capricorn/assets/"
     readonly property color ink: "#0d0910"

@@ -15,6 +15,7 @@ mkdir -p "$HOME/.local/share/capricorn/assets" "$HOME/.local/share/capricorn/wor
 install -m 644 "$ROOT"/capri/assets/* "$HOME/.local/share/capricorn/assets/"
 install -m 644 "$ROOT/capri/capri-chat.qml" "$HOME/.local/share/capricorn/capri-chat.qml"
 install -m 644 "$ROOT/capri/capri-pet.qml" "$HOME/.local/share/capricorn/capri-pet.qml"
+install -m 644 "$ROOT/capri/capri-pet-rule.js" "$HOME/.local/share/capricorn/capri-pet-rule.js"
 install -m 644 "$ROOT/capri/AGENTS.md" "$HOME/.local/share/capricorn/workspace/AGENTS.md"
 install -m 755 "$ROOT/capri/capri-agent.py" "$HOME/.local/share/capricorn/capri-agent.py"
 install -m 755 "$ROOT/capri/capri-chat-open.sh" "$HOME/.local/bin/capri-chat-open.sh"
