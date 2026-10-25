@@ -63,20 +63,7 @@ PlasmoidItem {
         for (var i = 0; i < 36; i++) m.push(randHex())
         matrix = m
 
-        // guaranteed-solvable route: first row -> column -> row -> column
-        var c0 = Math.floor(Math.random() * 6)
-        var r1 = Math.floor(Math.random() * 6)
-        var c2 = Math.floor(Math.random() * 6)
-        var r3 = Math.floor(Math.random() * 6)
-        var p0 = m[c0]
-        var p1 = m[r1 * 6 + c0]
-        var p2 = m[r1 * 6 + c2]
-        var p3 = m[r3 * 6 + c2]
-
-        daemons = [
-            { name: "DATAMINE_V1", seq: [p0, p1, p2] },
-            { name: "ICEPICK",     seq: [p1, p2, p3] }
-        ]
+        daemons = []
         results = []
         buffer = []
         phase = "boot"
@@ -106,25 +93,57 @@ PlasmoidItem {
     }
 
     function isAllowed(index) {
-        if (phase !== "playing" && phase !== "ready") return false
+        if (phase === "choosing") return true
+        if (phase !== "playing") return false
+        if (buffer.length === 0) return true
         var r = Math.floor(index / 6)
         var c = index % 6
         if (pickMode === "row") return r === lastRow
         return c === lastCol
     }
 
-    function startLink() {
+    function beginHack() {
         if (phase !== "ready") return
-        phase = "playing"
+        phase = "choosing"
         blink = false
-        trace = Math.min(99, trace + 1)
-        tick.start()
-        appendLog("link established // timer armed")
+        appendLog("breach armed // choose start node")
         sweepRequested()
     }
 
+    // build guaranteed-solvable daemons from the node the player starts on
+    function armDaemons(index) {
+        var sc = index % 6
+        var r1 = Math.floor(Math.random() * 6)
+        var c2 = Math.floor(Math.random() * 6)
+        var r3 = Math.floor(Math.random() * 6)
+        var p0 = matrix[index]
+        var p1 = matrix[r1 * 6 + sc]
+        var p2 = matrix[r1 * 6 + c2]
+        var p3 = matrix[r3 * 6 + c2]
+        daemons = [
+            { name: "DATAMINE_V1", seq: [p0, p1, p2] },
+            { name: "ICEPICK",     seq: [p1, p2, p3] }
+        ]
+    }
+
     function pick(index) {
-        if (phase === "ready") startLink()
+        if (phase === "choosing") {
+            var sr = Math.floor(index / 6)
+            var sc = index % 6
+            lastPicked = index
+            lastRow = sr
+            lastCol = sc
+            pickMode = "column"
+            buffer = [matrix[index]]
+            armDaemons(index)
+            phase = "playing"
+            trace = Math.min(99, trace + 2)
+            rev++
+            tick.start()
+            appendLog("start node " + matrix[index] + " // link established")
+            sweepRequested()
+            return
+        }
         if (phase !== "playing") return
 
         if (!isAllowed(index)) {
@@ -426,11 +445,14 @@ PlasmoidItem {
             // ── click anywhere ─────────────────────────────────────
             MouseArea {
                 anchors.fill: parent
-                cursorShape: (root.phase === "ready" || root.phase === "playing") ? Qt.PointingHandCursor : Qt.ArrowCursor
+                cursorShape: (root.phase === "choosing" || root.phase === "playing") ? Qt.PointingHandCursor : Qt.ArrowCursor
                 onClicked: {
                     if (root.phase === "ready") {
-                        root.startLink()
-                        clickFlashAnim.restart()
+                        root.toast = "PRESS START HACKING // LINK LOCKED"
+                        toastTimer.restart()
+                    } else if (root.phase === "choosing") {
+                        root.toast = "CHOOSE A START NODE IN THE MATRIX"
+                        toastTimer.restart()
                     } else if (root.phase === "playing") {
                         root.appendLog("manual scan pulse // no anomaly")
                         linkSweep.restart()
@@ -483,7 +505,12 @@ PlasmoidItem {
                 anchors.right: parent.right
                 anchors.rightMargin: 20
                 y: 30
-                text: root.phase === "boot" ? "DECRYPTING..." : "LINK " + (root.phase === "ready" ? "STANDBY" : "OPEN")
+                text: root.phase === "boot" ? "DECRYPTING..."
+                    : root.phase === "ready" ? "LINK STANDBY"
+                    : root.phase === "choosing" ? "AWAITING NODE"
+                    : root.phase === "upload" ? "UPLOADING"
+                    : root.phase === "result" ? "SESSION CLOSED"
+                    : "LINK OPEN"
                 color: root.phase === "boot" ? root.cLine : root.cDim
                 font.family: raj.name
                 font.pixelSize: 8
@@ -708,7 +735,7 @@ PlasmoidItem {
                             MouseArea {
                                 anchors.fill: parent
                                 hoverEnabled: true
-                                cursorShape: (root.phase === "playing" || root.phase === "ready") ? Qt.PointingHandCursor : Qt.ArrowCursor
+                                cursorShape: (root.phase === "playing" || root.phase === "choosing") ? Qt.PointingHandCursor : Qt.ArrowCursor
                                 onEntered: root.hoverIndex = cell.index
                                 onExited: if (root.hoverIndex === cell.index) root.hoverIndex = -1
                                 onClicked: root.pick(cell.index)
@@ -778,11 +805,115 @@ PlasmoidItem {
                 }
             }
 
+            // ── start hacking ──────────────────────────────────────
+            Item {
+                id: startOverlay
+                x: 20
+                y: 202
+                width: 397
+                height: 277
+                z: 20
+                visible: root.phase === "ready"
+
+                Rectangle { anchors.fill: parent; color: "#d2060603" }
+                Rectangle { anchors.fill: parent; color: "transparent"; border.color: root.cFaint; border.width: 1 }
+
+                MouseArea {
+                    anchors.fill: parent
+                    onClicked: {
+                        root.toast = "PRESS START HACKING"
+                        toastTimer.restart()
+                    }
+                }
+
+                Rectangle {
+                    id: startBtn
+                    anchors.centerIn: parent
+                    width: 330
+                    height: 78
+                    color: startMouse.containsMouse ? "#35300c" : "#1e1a07"
+                    border.color: root.cLine
+                    border.width: 2
+                    Behavior on color { ColorAnimation { duration: 120 } }
+
+                    Rectangle {
+                        anchors.fill: parent
+                        anchors.margins: -7
+                        color: "transparent"
+                        border.color: root.cLine
+                        border.width: 1
+                        SequentialAnimation on opacity {
+                            loops: Animation.Infinite
+                            NumberAnimation { to: 0.15; duration: 900 }
+                            NumberAnimation { to: 0.65; duration: 900 }
+                        }
+                    }
+
+                    Row {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        anchors.top: parent.top
+                        anchors.topMargin: 12
+                        spacing: 12
+
+                        Item {
+                            width: 14
+                            height: 27
+                            Text {
+                                anchors.centerIn: parent
+                                text: "▶"
+                                color: root.cLine
+                                font.family: "DejaVu Sans"
+                                font.pixelSize: 16
+                            }
+                        }
+                        Text {
+                            height: 27
+                            verticalAlignment: Text.AlignVCenter
+                            text: "START HACKING"
+                            color: root.cBright
+                            font.family: chakra.name
+                            font.pixelSize: 20
+                            font.letterSpacing: 4
+                        }
+                    }
+                    Text {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        anchors.bottom: parent.bottom
+                        anchors.bottomMargin: 9
+                        text: "JACK INTO ACCESS POINT 0x7F4A"
+                        color: root.cDim
+                        font.family: raj.name
+                        font.pixelSize: 8
+                        font.letterSpacing: 2
+                    }
+
+                    MouseArea {
+                        id: startMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: root.beginHack()
+                    }
+                }
+
+                Text {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.bottom: parent.bottom
+                    anchors.bottomMargin: 20
+                    text: "ICE LOCKED // BUFFER OFFLINE"
+                    color: root.cDim
+                    font.family: raj.name
+                    font.pixelSize: 8
+                    font.letterSpacing: 3
+                }
+            }
+
             // ── line rule / toast ──────────────────────────────────
             Text {
                 x: 20
                 y: 492
-                text: root.phase === "ready" ? "CLICK ANYWHERE TO JACK IN // START NODE = TOP ROW"
+                text: root.phase === "ready" ? "PRESS START HACKING TO ARM THE BREACH"
+                    : root.phase === "choosing" ? "CHOOSE START NODE // ANY CELL IN THE MATRIX"
                     : root.phase === "playing" ? "LINE LOCKED // " + (root.pickMode === "row"
                         ? "ROW " + (root.lastRow + 1) : "COLUMN " + (root.lastCol + 1))
                     : root.phase === "upload" ? "FLUSHING BUFFER // UPLOADING"
@@ -812,6 +943,20 @@ PlasmoidItem {
                 font.family: raj.name
                 font.pixelSize: 9
                 font.letterSpacing: 2
+            }
+            Text {
+                x: 434
+                y: 88
+                width: 266
+                height: 40
+                visible: root.daemons.length === 0
+                text: root.phase === "choosing" ? "AWAITING START NODE // SELECT ANY CELL"
+                    : "NO ACTIVE SEQUENCE // PRESS START HACKING"
+                color: root.cDim
+                font.family: raj.name
+                font.pixelSize: 8
+                font.letterSpacing: 2
+                wrapMode: Text.WordWrap
             }
             Column {
                 x: 434
