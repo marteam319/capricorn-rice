@@ -20,6 +20,7 @@ install -m 644 "$ROOT/capri/AGENTS.md" "$HOME/.local/share/capricorn/workspace/A
 install -m 755 "$ROOT/capri/capri-agent.py" "$HOME/.local/share/capricorn/capri-agent.py"
 install -m 755 "$ROOT/capri/capri-chat-open.sh" "$HOME/.local/bin/capri-chat-open.sh"
 install -m 755 "$ROOT/capri/capri-pet-open.sh" "$HOME/.local/bin/capri-pet-open.sh"
+install -m 755 "$ROOT/capri/capri-summon.sh" "$HOME/.local/bin/capri-summon.sh"
 install -m 755 "$ROOT/capri/capri-opencode.sh" "$HOME/.local/bin/capri-opencode.sh"
 install -m 755 "$ROOT/capri/capri-session.sh" "$HOME/.local/bin/capri-session.sh"
 install -m 644 "$ROOT/capri/capri-agent.service" "$HOME/.config/systemd/user/capri-agent.service"
@@ -32,6 +33,7 @@ sed -i "s|/home/marteam|$HOME|g" \
     "$HOME/.local/share/capricorn/capri-chat.qml" \
     "$HOME/.local/share/capricorn/capri-pet.qml" \
     "$HOME/.local/bin/capri-chat-open.sh" \
+    "$HOME/.local/bin/capri-summon.sh" \
     "$HOME/.local/bin/capri-opencode.sh" \
     "$HOME/.local/bin/capri-session.sh" \
     "$HOME/.config/autostart/capri-pet.desktop" \

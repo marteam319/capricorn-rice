@@ -13,6 +13,9 @@ so normal applications cover her: she is only visible on the wallpaper.
 - **capri-agent.py** — 127.0.0.1 bridge that runs `opencode run` with a Capri persona, keeps one session,
   and returns the answer. `--auto` lets the agent act on the machine.
 - **capri-pet.desktop** — autostart entry for the roaming overlay.
+- Clicking the portrait widget fires `/summon`: the card flashes and pulses, the pet teleports to the card's
+  exact screen position and pops out of it (0.05 → 1.12 → 1 scale, glitch ghosts/slices, shards, "hey!"),
+  then the chat opens after 1.5 s.
 
 The Windows-only tricks from the original (sitting on arbitrary windows, possessing them, tracking Claude Code
 via hooks) are not ported; the overlay roams the screen, peeks from edges, sleeps, and reacts instead.

@@ -8,6 +8,8 @@ import json
 import os
 import subprocess
 import threading
+import time
+from urllib.parse import urlparse, parse_qs
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -30,6 +32,7 @@ PERSONA = (
     "The user writes in English or Polish; answer in the language they use."
 )
 LOCK = threading.Lock()
+SUMMON = {"id": 0.0, "x": 0.0, "y": 0.0}
 
 
 def read_session():
@@ -122,13 +125,38 @@ class Handler(BaseHTTPRequestHandler):
         self._headers(204)
 
     def do_GET(self):
-        if self.path.startswith("/health"):
+        parsed = urlparse(self.path)
+        if parsed.path == "/health":
             self._json({"ok": True, "model": MODEL, "session": read_session()})
+        elif parsed.path == "/summon":
+            try:
+                since = float(parse_qs(parsed.query).get("since", ["0"])[0])
+            except Exception:
+                since = 0.0
+            if SUMMON["id"] > since:
+                self._json(SUMMON)
+            else:
+                self._json({"id": since, "x": 0.0, "y": 0.0})
         else:
             self._json({"error": "not found"}, 404)
 
     def do_POST(self):
-        if not self.path.startswith("/chat"):
+        parsed = urlparse(self.path)
+        if parsed.path == "/summon":
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+                payload = json.loads(self.rfile.read(length) or b"{}")
+                x = float(payload.get("x", 0))
+                y = float(payload.get("y", 0))
+            except Exception as exc:
+                self._json({"error": f"bad summon: {exc}"}, 400)
+                return
+            SUMMON["id"] = time.time()
+            SUMMON["x"] = x
+            SUMMON["y"] = y
+            self._json({"ok": True, "id": SUMMON["id"]})
+            return
+        if parsed.path != "/chat":
             self._json({"error": "not found"}, 404)
             return
         try:
@@ -150,7 +178,13 @@ class Handler(BaseHTTPRequestHandler):
             self._json({"error": str(exc)}, 500)
 
     def log_message(self, fmt, *args):
-        print("capri-agent:", fmt % args, flush=True)
+        try:
+            text = fmt % args
+        except Exception:
+            text = str(fmt)
+        if "/summon" in text:
+            return
+        print("capri-agent:", text, flush=True)
 
 
 if __name__ == "__main__":

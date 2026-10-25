@@ -20,6 +20,14 @@ PlasmoidItem {
 
     property bool hovered: false
     property bool baseFace: true
+    property real summonScale: 1.0
+
+    SequentialAnimation {
+        id: summonAnim
+        NumberAnimation { target: root; property: "summonScale"; from: 1.0; to: 1.08; duration: 70; easing.type: Easing.OutCubic }
+        NumberAnimation { target: root; property: "summonScale"; to: 1.0; duration: 190; easing.type: Easing.OutCubic }
+    }
+
 
     Plasma5Support.DataSource {
         id: exec
@@ -38,7 +46,7 @@ PlasmoidItem {
             id: card
             width: 160
             height: 160
-            scale: Math.min(outer.width / 160, outer.height / 160)
+            scale: Math.min(outer.width / 160, outer.height / 160) * root.summonScale
             transformOrigin: Item.TopLeft
             x: (outer.width - 160 * scale) / 2
             y: (outer.height - 160 * scale) / 2
@@ -146,6 +154,17 @@ PlasmoidItem {
                 font.letterSpacing: 1
             }
 
+            Rectangle {
+                id: summonFlash
+                anchors.fill: parent
+                color: root.green
+                opacity: 0
+            }
+            SequentialAnimation {
+                id: summonFlashAnim
+                NumberAnimation { target: summonFlash; property: "opacity"; from: 0.45; to: 0; duration: 280 }
+            }
+
             MouseArea {
                 id: hover
                 anchors.fill: parent
@@ -163,7 +182,21 @@ PlasmoidItem {
                     root.baseFace = true
                     faceSwap.restart()
                 }
-                onClicked: exec.run("/home/marteam/.local/bin/capri-chat-open.sh")
+                onClicked: {
+                    var gx = 160, gy = 434
+                    if (typeof outer.mapToGlobal === "function") {
+                        var p = outer.mapToGlobal(outer.width / 2, outer.height / 2)
+                        if (p && !isNaN(p.x) && !isNaN(p.y)) {
+                            gx = Math.round(p.x)
+                            gy = Math.round(p.y)
+                        }
+                    }
+                    root.summonScale = 1.0
+                    summonAnim.restart()
+                    summonFlashAnim.restart()
+                    faceSwap.restart()
+                    exec.run("/home/marteam/.local/bin/capri-summon.sh " + gx + " " + gy)
+                }
             }
         }
     }

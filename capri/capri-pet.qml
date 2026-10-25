@@ -44,6 +44,11 @@ Window {
     property real dragWinY: 0
     property var lastActivity: Date.now()
     property var shards: []
+    property string bridge: "http://127.0.0.1:8787"
+    property real summonSince: Date.now() / 1000
+    property bool popping: false
+    property real popScale: 1.0
+    property real popRot: 0
 
     Plasma5Support.DataSource {
         id: exec
@@ -51,6 +56,22 @@ Window {
         connectedSources: []
         onNewData: function (sourceName, data) { exec.disconnectSource(sourceName) }
         function run(cmd) { exec.connectSource(cmd) }
+    }
+
+    Timer {
+        interval: 350
+        repeat: true
+        running: true
+        onTriggered: win.pollSummon()
+    }
+
+    Timer {
+        id: popStay
+        interval: 4400
+        onTriggered: {
+            var s = win.randomSpot()
+            win.teleportTo(s.x, s.y, "over here.")
+        }
     }
 
     // ── screen geometry ─────────────────────────────────────────────
@@ -202,9 +223,53 @@ Window {
         peekTimer.restart()
     }
 
+    // ── summon from the plasmoid ────────────────────────────────────
+    function pollSummon() {
+        var x = new XMLHttpRequest()
+        x.open("GET", win.bridge + "/summon?since=" + win.summonSince)
+        x.timeout = 600
+        x.onreadystatechange = function () {
+            if (x.readyState !== XMLHttpRequest.DONE) return
+            if (x.status !== 200) return
+            try {
+                var d = JSON.parse(x.responseText)
+                if (d.id > win.summonSince) {
+                    win.summonSince = d.id
+                    if (typeof d.x === "number" && typeof d.y === "number")
+                        win.summonPop(d.x, d.y)
+                }
+            } catch (e) {}
+        }
+        x.send()
+    }
+
+    function summonPop(gx, gy) {
+        driftAnim.stop()
+        tpTimer.stop()
+        peekTimer.stop()
+        popStay.stop()
+        win.peeking = false
+        win.busyMoving = true
+        win.wake()
+        win.asleep = false
+        body.opacity = 1
+        win.x = Math.round(gx - 150)
+        win.y = Math.round(gy - 300)
+        win.popping = true
+        win.popScale = 0.05
+        win.popRot = -12
+        win.bubbleVisible = false
+        win.glitchNow(true, 520)
+        win.spawnShards(16, 150, 300)
+        win.lastActivity = Date.now()
+        popAnim.restart()
+        popStay.restart()
+    }
+
     // ── glitch / shards ─────────────────────────────────────────────
-    function glitchNow(big) {
+    function glitchNow(big, hold) {
         glitching = true
+        glitchOff.interval = hold || 120
         glitchOff.restart()
         if (big) spawnShards(4, body.x + 80 + Math.random() * 120, body.y + 80 + Math.random() * 160)
     }
@@ -213,6 +278,27 @@ Window {
         id: glitchOff
         interval: 120
         onTriggered: win.glitching = false
+    }
+
+    SequentialAnimation {
+        id: popAnim
+        ParallelAnimation {
+            NumberAnimation { target: win; property: "popScale"; to: 1.12; duration: 360; easing.type: Easing.OutBack }
+            NumberAnimation { target: win; property: "popRot"; to: 3; duration: 360 }
+        }
+        ParallelAnimation {
+            NumberAnimation { target: win; property: "popScale"; to: 1.0; duration: 120 }
+            NumberAnimation { target: win; property: "popRot"; to: 0; duration: 120 }
+        }
+        onFinished: {
+            win.popping = false
+            win.popScale = 1.0
+            win.popRot = 0
+            win.spawnShards(8, 150, 300)
+            win.showBubble("hey!", "face-smug.png", 1600)
+            win.busyMoving = false
+            win.lastActivity = Date.now()
+        }
     }
 
     function spawnShards(n, cx, cy) {
@@ -314,10 +400,10 @@ Window {
         y: win.baseY + win.bob
         width: 220
         height: 420
-        transformOrigin: Item.Bottom
-        rotation: win.tilt
-        scale: win.asleep ? 0.9 : (win.hovered ? 1.02 : 1.0)
-        Behavior on scale { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
+        transformOrigin: win.popping ? Item.Center : Item.Bottom
+        rotation: win.tilt + (win.popping ? win.popRot : 0)
+        scale: (win.asleep ? 0.9 : (win.hovered ? 1.02 : 1.0)) * (win.popping ? win.popScale : 1.0)
+        Behavior on scale { enabled: !win.popping; NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
         opacity: 1
         Behavior on opacity { NumberAnimation { duration: 220 } }
 
