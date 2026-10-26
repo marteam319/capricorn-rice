@@ -20,8 +20,8 @@ so normal applications cover her: she is only visible on the wallpaper.
 - **Perch** — right-click her → **PERCH**. The active window is tracked via a KWin script; she shows her upper body
   on the window's top edge, cropped to the torso, legs hidden behind the window. She stays in the Below layer, so
   the app still covers her lower half and she never draws over app content. Maximized windows cannot be perched on.
-- **Sleep mask** — right-click → **SLEEP** (or 3 idle minutes): her body fades to the floating green mask, eyes shut,
-  and wakes on hover/click.
+- **Sleep mask** — right-click → **SLEEP** (or 10 quiet minutes): she leans back wearing a green sleep mask over her
+  face, body still visible, and wakes on hover/click.
 - **INTRO** in her menu replays the face-shutter sequence.
 - Remaining reference features (window possession with eyes, Claude Code window tracking/pointing) need a topmost
   overlay that draws over apps; they are not enabled in wallpaper-only mode.

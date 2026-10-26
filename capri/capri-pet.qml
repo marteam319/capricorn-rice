@@ -522,7 +522,6 @@ Window {
         asleep = true
         sleepMask.visible = true
         sleepMask.opacity = 1
-        body.opacity = 0.08
         showBubble("zZz…", "face-smug.png", 999999)
     }
 
@@ -531,7 +530,6 @@ Window {
         asleep = false
         sleepMask.opacity = 0
         sleepMask.visible = false
-        body.opacity = 1
         showBubble("i'm up.", "face-look.png", 2200)
         lastActivity = Date.now()
     }
@@ -541,7 +539,7 @@ Window {
         repeat: true
         running: true
         onTriggered: {
-            if (!win.asleep && Date.now() - win.lastActivity > 180000) win.sleep()
+            if (!win.asleep && Date.now() - win.lastActivity > 600000) win.sleep()
         }
     }
 
@@ -580,23 +578,6 @@ Window {
         duration: 260
     }
 
-    Image {
-        id: sleepMask
-        x: 88; y: 220; width: 124; height: 104
-        source: win.assets + "mask.png"
-        fillMode: Image.PreserveAspectFit
-        visible: false
-        opacity: 0
-        z: 6
-        Behavior on opacity { NumberAnimation { duration: 280 } }
-        SequentialAnimation on y {
-            running: win.asleep
-            loops: Animation.Infinite
-            NumberAnimation { to: 212; duration: 1700; easing.type: Easing.InOutSine }
-            NumberAnimation { to: 222; duration: 1700; easing.type: Easing.InOutSine }
-        }
-    }
-
     // ── body ────────────────────────────────────────────────────────
     Item {
         id: body
@@ -606,7 +587,7 @@ Window {
         height: 420
         transformOrigin: win.popping ? Item.Center : Item.Bottom
         transform: Scale { origin.x: body.width / 2; origin.y: body.height / 2; xScale: win.warpSquash }
-        rotation: win.tilt + (win.popping ? win.popRot : 0)
+        rotation: win.tilt + (win.popping ? win.popRot : 0) + (win.asleep ? -3 : 0)
         scale: (win.asleep ? 0.9 : (win.hovered ? 1.02 : 1.0)) * (win.popping ? win.popScale : 1.0) * (win.sitting ? 0.55 : 1.0)
         Behavior on scale { enabled: !win.popping; NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
         opacity: 1
@@ -651,6 +632,60 @@ Window {
         }
         Rectangle { visible: win.glitching; x: 0; y: 120; width: body.width; height: 3; color: win.green; opacity: 0.55 }
         Rectangle { visible: win.glitching; x: 0; y: 250; width: body.width; height: 2; color: win.red; opacity: 0.5 }
+
+        // sleep mask worn on her face (body stays visible)
+        Item {
+            id: sleepMask
+            x: 92; y: 100; width: 62; height: 48
+            z: 20
+            visible: win.asleep
+            opacity: win.asleep ? 1 : 0
+            Behavior on opacity { NumberAnimation { duration: 220 } }
+            SequentialAnimation on y {
+                running: win.asleep
+                loops: Animation.Infinite
+                NumberAnimation { to: 98; duration: 1700; easing.type: Easing.InOutSine }
+                NumberAnimation { to: 100; duration: 1700; easing.type: Easing.InOutSine }
+            }
+
+            Canvas {
+                anchors.fill: parent
+                onPaint: {
+                    var ctx = getContext("2d")
+                    ctx.reset()
+                    // green plate
+                    ctx.beginPath()
+                    ctx.moveTo(5, 12)
+                    ctx.lineTo(52, 3)
+                    ctx.lineTo(60, 20)
+                    ctx.lineTo(53, 41)
+                    ctx.lineTo(10, 46)
+                    ctx.lineTo(1, 27)
+                    ctx.closePath()
+                    ctx.fillStyle = "#2bff86"
+                    ctx.fill()
+                    ctx.lineWidth = 3
+                    ctx.strokeStyle = "#090610"
+                    ctx.stroke()
+                    // strap stubs
+                    ctx.fillStyle = "#090610"
+                    ctx.fillRect(0, 24, 5, 6)
+                    ctx.fillRect(57, 20, 5, 6)
+                    // closed zigzag eyes
+                    ctx.strokeStyle = "#090610"
+                    ctx.lineWidth = 4
+                    ctx.lineCap = "round"
+                    ctx.beginPath(); ctx.moveTo(13, 25); ctx.lineTo(21, 19); ctx.lineTo(29, 25); ctx.stroke()
+                    ctx.beginPath(); ctx.moveTo(37, 22); ctx.lineTo(46, 16); ctx.lineTo(54, 22); ctx.stroke()
+                    // white fang
+                    ctx.beginPath()
+                    ctx.moveTo(28, 3); ctx.lineTo(36, 3); ctx.lineTo(32, 13)
+                    ctx.closePath()
+                    ctx.fillStyle = "#fff6ec"
+                    ctx.fill()
+                }
+            }
+        }
 
         MouseArea {
             id: bodyMouse
