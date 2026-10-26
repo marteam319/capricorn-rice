@@ -17,12 +17,17 @@ so normal applications cover her: she is only visible on the wallpaper.
 - **Transmission popup** — a compact in-world panel beside her: "MISSION ACCOMPLIE, CHOOM.", the agent's reply,
   and "◆ N actions · Xs". Shown on summon and when the background agent finishes.
 - **Teleport warp** — she collapses into a red line with shards and reassembles at the destination.
+- **Little idle acts** — right-click → **BOX FORM**: she folds into a chamfered biochip box with her face in it,
+  floats, and unfolds. **SHOOT STAR**: she looks up and fires a four-point green star at the little star above her.
+  Both also happen on their own while she wanders.
+- **Intro** — the reference intro cels (grab, mouth, wave, smear) play behind a shutter, with the
+  `hi` / `you're back` / `let's go` lines, her face and waving hand on the wallpaper.
 - **Perch** — right-click her → **PERCH**. The active window is tracked via a KWin script; she shows her upper body
   on the window's top edge, cropped to the torso, legs hidden behind the window. She stays in the Below layer, so
   the app still covers her lower half and she never draws over app content. Maximized windows cannot be perched on.
 - **Sleep mask** — right-click → **SLEEP** (or 10 quiet minutes): she leans back wearing a green sleep mask over her
   face, body still visible, and wakes on hover/click.
-- **INTRO** in her menu replays the face-shutter sequence.
+- **INTRO** in her menu replays the intro cel sequence (her face, mouth and wave).
 - Remaining reference features (window possession with eyes, Claude Code window tracking/pointing) need a topmost
   overlay that draws over apps; they are not enabled in wallpaper-only mode.
 - Clicking the portrait widget fires `/summon`: the card flashes and pulses, the pet teleports to the card's

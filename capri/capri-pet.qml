@@ -53,6 +53,13 @@ Window {
     property bool sitting: false
     property real warpSquash: 1.0
     property var lastActive: null
+    property bool acting: false
+    property bool chipMode: false
+    property bool starAct: false
+    property bool starHit: false
+    property real starT: 0
+    property real fold: 1.0
+    Behavior on fold { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
 
     Plasma5Support.DataSource {
         id: exec
@@ -100,6 +107,28 @@ Window {
         repeat: true
         running: true
         onTriggered: win.pollStatus()
+    }
+
+    Timer {
+        id: chipTimer
+        interval: 4600
+        onTriggered: win.endBox()
+    }
+
+    Timer {
+        id: starTick
+        interval: 16
+        repeat: true
+        running: win.starAct
+        onTriggered: {
+            win.starT += 0.012
+            if (!win.starHit && win.starT >= 0.72) {
+                win.starHit = true
+                win.spawnShards(10, 270, 95)
+            }
+            if (win.starT >= 1.25) win.endStar()
+            starCanvas.requestPaint()
+        }
     }
 
 
@@ -191,7 +220,6 @@ Window {
         onTriggered: {
             win.x = Math.round(tpX)
             win.y = Math.round(tpY)
-            body.opacity = 1
             busyMoving = false
             spawnShards(5, body.x + body.width / 2, body.y + 180)
         }
@@ -213,13 +241,21 @@ Window {
     }
 
     function wanderStep() {
-        if (!roaming || asleep || peeking || sitting || menuOpen || dragging || busyMoving) return
+        if (!roaming || asleep || peeking || sitting || menuOpen || dragging || busyMoving
+                || acting || chipMode || starAct) return
         var r = Math.random()
-        if (r < 0.55) {
+        if (r < 0.30) {
             var s = randomSpot()
             teleportTo(s.x, s.y, "over here.")
-        } else if (r < 0.82) {
+        } else if (r < 0.46) {
             peek()
+        } else if (r < 0.58) {
+            glitchNow(true)
+            showBubble(pickTaunt(), "face-smug.png", 2400)
+        } else if (r < 0.73) {
+            boxForm()
+        } else if (r < 0.88) {
+            shootStar()
         } else {
             glitchNow(true)
             showBubble(pickTaunt(), "face-smug.png", 2400)
@@ -233,7 +269,7 @@ Window {
 
     Timer {
         id: wanderTimer
-        interval: 22000
+        interval: 16000
         repeat: true
         running: !win.asleep
         onTriggered: {
@@ -349,7 +385,8 @@ Window {
         win.warpSquash = 1.0
         win.wake()
         win.asleep = false
-        body.opacity = 1
+        if (win.chipMode) win.endBox()
+        if (win.starAct) win.endStar()
         win.x = Math.round(gx - 150)
         win.y = Math.round(gy - 300)
         win.popping = true
@@ -396,7 +433,6 @@ Window {
         win.peeking = false
         win.busyMoving = false
         win.asleep = false
-        body.opacity = 1
         win.popScale = 1.0
         win.popping = false
         win.sitting = true
@@ -425,6 +461,61 @@ Window {
         win.glitchNow(true, 220)
         var s = win.randomSpot()
         win.teleportTo(s.x, s.y, "over here.")
+    }
+
+    // ── extra idle acts ─────────────────────────────────────────────
+    function canAct() {
+        return !win.busyMoving && !win.dragging && !win.popping && !win.asleep
+            && !win.peeking && !win.sitting && !win.menuOpen
+            && !win.acting && !win.chipMode && !win.starAct
+    }
+
+    function boxForm() {
+        if (!win.canAct()) return
+        win.acting = true
+        win.chipMode = true
+        win.fold = 0.06
+        win.tilt = 0
+        win.lastActivity = Date.now()
+        win.spawnShards(12, 150, 300)
+        win.showBubble("compressing.", "face-smug.png", 1600)
+        chipTimer.restart()
+    }
+
+    function endBox() {
+        if (!win.chipMode) return
+        chipTimer.stop()
+        win.chipMode = false
+        win.fold = 1.0
+        win.acting = false
+        win.lastActivity = Date.now()
+        win.spawnShards(10, 150, 300)
+        win.showBubble("back online.", "face-calm.png", 1600)
+    }
+
+    function shootStar() {
+        if (!win.canAct()) return
+        win.acting = true
+        win.starAct = true
+        win.starT = 0
+        win.starHit = false
+        win.tilt = -6
+        win.lastActivity = Date.now()
+        win.spawnShards(5, 210, 300)
+        win.showBubble("watch the sky.", "face-wide.png", 2000)
+        starTick.restart()
+    }
+
+    function endStar() {
+        if (!win.starAct) return
+        starTick.stop()
+        win.starAct = false
+        win.starT = 0
+        win.starHit = false
+        win.tilt = 0
+        win.acting = false
+        win.lastActivity = Date.now()
+        win.showBubble("…", "face-calm.png", 1200)
     }
 
     // ── glitch / shards ─────────────────────────────────────────────
@@ -519,6 +610,8 @@ Window {
     // ── sleep / wake ───────────────────────────────────────────────
     function sleep() {
         if (asleep) return
+        if (win.chipMode) win.endBox()
+        if (win.starAct) win.endStar()
         asleep = true
         sleepMask.visible = true
         sleepMask.opacity = 1
@@ -588,9 +681,9 @@ Window {
         transformOrigin: win.popping ? Item.Center : Item.Bottom
         transform: Scale { origin.x: body.width / 2; origin.y: body.height / 2; xScale: win.warpSquash }
         rotation: win.tilt + (win.popping ? win.popRot : 0) + (win.asleep ? -3 : 0)
-        scale: (win.asleep ? 0.9 : (win.hovered ? 1.02 : 1.0)) * (win.popping ? win.popScale : 1.0) * (win.sitting ? 0.55 : 1.0)
+        scale: (win.asleep ? 0.9 : (win.hovered ? 1.02 : 1.0)) * (win.popping ? win.popScale : 1.0) * (win.sitting ? 0.55 : 1.0) * win.fold
         Behavior on scale { enabled: !win.popping; NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
-        opacity: 1
+        opacity: win.chipMode ? 0 : 1
         Behavior on opacity { NumberAnimation { duration: 220 } }
 
         // violet misregistration
@@ -744,6 +837,161 @@ Window {
         }
     }
 
+    // ── biochip form: a little box with her face ──────────────────
+    Item {
+        id: chipBox
+        x: 88; y: 240
+        width: 124; height: 116
+        z: 12
+        opacity: win.chipMode ? 1 : 0
+        scale: win.chipMode ? 1 : 0.25
+        Behavior on opacity { NumberAnimation { duration: 180 } }
+        Behavior on scale { NumberAnimation { duration: 240; easing.type: Easing.OutBack } }
+        SequentialAnimation on y {
+            running: win.chipMode
+            loops: Animation.Infinite
+            NumberAnimation { to: 232; duration: 1800; easing.type: Easing.InOutSine }
+            NumberAnimation { to: 240; duration: 1800; easing.type: Easing.InOutSine }
+        }
+
+        Rectangle {
+            x: 6; y: 6; width: 124; height: 116
+            color: win.violet; opacity: 0.55
+        }
+
+        Canvas {
+            anchors.fill: parent
+            onPaint: {
+                var ctx = getContext("2d")
+                ctx.reset()
+                ctx.beginPath()
+                ctx.moveTo(12, 0); ctx.lineTo(112, 0); ctx.lineTo(124, 12)
+                ctx.lineTo(124, 104); ctx.lineTo(112, 116); ctx.lineTo(12, 116)
+                ctx.lineTo(0, 104); ctx.lineTo(0, 12); ctx.closePath()
+                ctx.fillStyle = win.ink; ctx.fill()
+                ctx.lineWidth = 2; ctx.strokeStyle = win.violet; ctx.stroke()
+            }
+        }
+
+        Rectangle {
+            x: 16; y: 18; width: 72; height: 72
+            color: win.ink
+            border.color: win.green
+            border.width: 1
+        }
+        Image {
+            x: 18; y: 20; width: 68; height: 68
+            source: win.assets + "capri-face.png"
+            fillMode: Image.PreserveAspectCrop
+        }
+        Rectangle {
+            x: 16; y: 38; width: 72; height: 1
+            color: win.green; opacity: 0.6
+        }
+
+        Text {
+            x: 94; y: 20
+            text: "CAPRI"
+            color: win.green
+            font.family: "JetBrains Mono"
+            font.pixelSize: 8
+            font.letterSpacing: 1
+        }
+        Text {
+            x: 94; y: 33
+            text: "CHIP"
+            color: win.paper3
+            font.family: "JetBrains Mono"
+            font.pixelSize: 7
+            font.letterSpacing: 1
+        }
+        Rectangle { x: 94; y: 52; width: 18; height: 2; color: win.violet }
+        Rectangle { x: 94; y: 58; width: 12; height: 2; color: win.green }
+        Rectangle { x: 94; y: 84; width: 7; height: 7; radius: 3.5; color: win.green }
+
+        Rectangle { x: 60; y: -20; width: 2; height: 20; color: win.violet }
+        Rectangle { x: 55; y: -26; width: 12; height: 8; color: win.green }
+
+        Rectangle {
+            x: 0; y: 60; width: 124; height: 4
+            color: win.green; opacity: 0.35
+            SequentialAnimation on y {
+                loops: Animation.Infinite
+                NumberAnimation { to: 100; duration: 1100; easing.type: Easing.InOutSine }
+                NumberAnimation { to: 60; duration: 1100; easing.type: Easing.InOutSine }
+            }
+        }
+    }
+
+    // ── shoot the star ─────────────────────────────────────────────
+    Canvas {
+        id: starCanvas
+        anchors.fill: parent
+        z: 26
+        visible: win.starAct
+        onPaint: {
+            var ctx = getContext("2d")
+            ctx.reset()
+
+            function star(cx, cy, r, color, alpha) {
+                ctx.save()
+                ctx.globalAlpha = alpha
+                ctx.fillStyle = color
+                ctx.beginPath()
+                for (var i = 0; i < 8; i++) {
+                    var ang = -Math.PI / 2 + i * Math.PI / 4
+                    var rr = (i % 2) ? r * 0.32 : r
+                    ctx.lineTo(cx + Math.cos(ang) * rr, cy + Math.sin(ang) * rr)
+                }
+                ctx.closePath()
+                ctx.fill()
+                ctx.restore()
+            }
+
+            var sx = 214, sy = 300
+            var cx = 290, cy = 190
+            var ex = 270, ey = 95
+            function px(tt) { return (1-tt)*(1-tt)*sx + 2*(1-tt)*tt*cx + tt*tt*ex }
+            function py(tt) { return (1-tt)*(1-tt)*sy + 2*(1-tt)*tt*cy + tt*tt*ey }
+
+            ctx.globalAlpha = 0.25
+            ctx.strokeStyle = win.red
+            ctx.lineWidth = 2
+            ctx.beginPath()
+            ctx.moveTo(sx, sy)
+            ctx.quadraticCurveTo(cx, cy, ex, ey)
+            ctx.stroke()
+            ctx.globalAlpha = 1
+
+            var pulse = win.starHit ? 1 + 0.25 * Math.sin(win.starT * 40) : 1
+            star(ex, ey, 9 * pulse, win.violet, 0.55)
+            star(ex, ey, 6 * pulse, win.green, 1)
+
+            var t = Math.min(win.starT / 0.72, 1)
+            for (var i = 9; i >= 0; i--) {
+                var tt = t - i * 0.045
+                if (tt < 0) continue
+                var a = 1 - i / 10
+                star(px(tt), py(tt), 8 * a, win.violet, 0.35 * a)
+                star(px(tt), py(tt), 5 * a, win.green, 0.8 * a)
+            }
+
+            if (!win.starHit) {
+                star(px(t), py(t), 12, win.violet, 0.7)
+                star(px(t), py(t), 9, win.green, 1)
+                star(px(t), py(t), 3, win.paper, 0.95)
+            } else {
+                ctx.globalAlpha = 0.6
+                ctx.strokeStyle = win.green
+                ctx.lineWidth = 2
+                ctx.beginPath()
+                ctx.arc(ex, ey, 10 + (win.starT - 0.72) * 60, 0, Math.PI * 2)
+                ctx.stroke()
+                ctx.globalAlpha = 1
+            }
+        }
+    }
+
     // ── shards ──────────────────────────────────────────────────────
     Canvas {
         id: shardCanvas
@@ -845,6 +1093,8 @@ Window {
                 { label: "SLEEP / WAKE", act: "sleep" },
                 { label: "PERCH", act: "perch" },
                 { label: "INTRO", act: "intro" },
+                { label: "BOX FORM", act: "box" },
+                { label: "SHOOT STAR", act: "star" },
                 { label: "WANDER", act: "wander" },
                 { label: "GLITCH", act: "glitch" },
                 { label: "CLOSE", act: "close" }
@@ -873,6 +1123,8 @@ Window {
                         if (modelData.act === "sleep") { if (win.asleep) win.wake(); else win.sleep() }
                         else if (modelData.act === "perch") { win.tryPerch() }
                         else if (modelData.act === "intro") { exec.run("/home/marteam/.local/bin/capri-intro-open.sh") }
+                        else if (modelData.act === "box") { win.boxForm() }
+                        else if (modelData.act === "star") { win.shootStar() }
                         else if (modelData.act === "wander") { win.roaming = !win.roaming; win.showBubble(win.roaming ? "wandering." : "staying put.", "face-calm.png", 2000) }
                         else if (modelData.act === "glitch") { win.glitchNow(true); win.showBubble(win.pickTaunt(), "face-smug.png", 1800) }
                         else if (modelData.act === "close") Qt.quit()
