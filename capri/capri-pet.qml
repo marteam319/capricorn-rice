@@ -52,6 +52,7 @@ Window {
     property real popRot: 0
     property bool sitting: false
     property real warpSquash: 1.0
+    property var lastActive: null
 
     Plasma5Support.DataSource {
         id: exec
@@ -62,11 +63,30 @@ Window {
     }
 
 
+    Plasma5Support.DataSource {
+        id: kwin
+        engine: "executable"
+        connectedSources: []
+        onNewData: function (sourceName, data) {
+            kwin.disconnectSource(sourceName)
+            var out = data ? (data["stdout"] || "") : ""
+            if (out) win.parseWindow(String(out))
+        }
+        function run(cmd) { kwin.connectSource(cmd) }
+    }
+
     Timer {
         interval: 350
         repeat: true
         running: true
         onTriggered: win.pollSummon()
+    }
+
+    Timer {
+        interval: 900
+        repeat: true
+        running: true
+        onTriggered: kwin.run("/home/marteam/.local/share/capricorn/capri-active-window.sh")
     }
 
     Timer {
@@ -248,13 +268,15 @@ Window {
     // ── transmission popup ──────────────────────────────────────────
     function placePopup() {
         var b = win.bounds()
+        var baseX = win.sitting ? perch.x + 150 : win.x
+        var baseY = win.sitting ? perch.y + 140 : win.y
         var left = b.x0
         var right = b.x1 + win.width + 8 - popup.width
-        var px = win.x - popup.width + 70
-        if (px < left) px = win.x + win.width - 70
+        var px = baseX - popup.width + 70
+        if (px < left) px = baseX + win.width - 70
         px = Math.max(left, Math.min(px, right))
         var bottom = b.y1 + win.height + 8 - popup.height
-        var py = Math.max(b.y0, Math.min(win.y - 10, bottom))
+        var py = Math.max(b.y0, Math.min(baseY - 10, bottom))
         popup.x = Math.round(px)
         popup.y = Math.round(py)
     }
@@ -322,6 +344,7 @@ Window {
         popStay.stop()
         win.peeking = false
         win.sitting = false
+        perch.visible = false
         win.busyMoving = true
         win.warpSquash = 1.0
         win.wake()
@@ -359,6 +382,7 @@ Window {
         if (!isFinite(x) || !isFinite(y) || !isFinite(w) || !isFinite(h)) return
         if (cap.indexOf("CAPRI //") === 0 || cap.indexOf("Capri //") === 0 || cls === "plasmashell") return
         var good = (y >= 160 && w >= 360 && h >= 240)
+        win.lastActive = { x: x, y: y, w: w, h: h, good: good }
         if (good) win.sitOn(x, y, w, h)
         else if (win.sitting) win.standUp()
     }
@@ -376,18 +400,29 @@ Window {
         win.popScale = 1.0
         win.popping = false
         win.sitting = true
-        win.x = tx
-        win.y = ty
+        perch.x = Math.round(x + w / 2 - 150)
+        perch.y = Math.round(y - 270)
+        perch.visible = true
+        win.x = -2000
+        win.y = -2000
         win.tilt = 0
         win.bubbleVisible = false
         win.lastActivity = Date.now()
     }
 
+    function tryPerch() {
+        if (!win.lastActive || !win.lastActive.good) {
+            win.showBubble("need a window.", "face-aside.png", 1700)
+            return
+        }
+        win.sitOn(win.lastActive.x, win.lastActive.y, win.lastActive.w, win.lastActive.h)
+    }
+
     function standUp() {
         if (!win.sitting) return
         win.sitting = false
+        perch.visible = false
         win.glitchNow(true, 220)
-        win.showBubble("oof.", "face-wide.png", 1200)
         var s = win.randomSpot()
         win.teleportTo(s.x, s.y, "over here.")
     }
@@ -485,13 +520,17 @@ Window {
     function sleep() {
         if (asleep) return
         asleep = true
+        sleepMask.visible = true
+        sleepMask.opacity = 1
+        body.opacity = 0.08
         showBubble("zZz…", "face-smug.png", 999999)
-        body.opacity = 0.55
     }
 
     function wake() {
         if (!asleep) return
         asleep = false
+        sleepMask.opacity = 0
+        sleepMask.visible = false
         body.opacity = 1
         showBubble("i'm up.", "face-look.png", 2200)
         lastActivity = Date.now()
@@ -539,6 +578,23 @@ Window {
         property: "opacity"
         to: 0
         duration: 260
+    }
+
+    Image {
+        id: sleepMask
+        x: 88; y: 220; width: 124; height: 104
+        source: win.assets + "mask.png"
+        fillMode: Image.PreserveAspectFit
+        visible: false
+        opacity: 0
+        z: 6
+        Behavior on opacity { NumberAnimation { duration: 280 } }
+        SequentialAnimation on y {
+            running: win.asleep
+            loops: Animation.Infinite
+            NumberAnimation { to: 212; duration: 1700; easing.type: Easing.InOutSine }
+            NumberAnimation { to: 222; duration: 1700; easing.type: Easing.InOutSine }
+        }
     }
 
     // ── body ────────────────────────────────────────────────────────
@@ -752,6 +808,8 @@ Window {
         Repeater {
             model: [
                 { label: "SLEEP / WAKE", act: "sleep" },
+                { label: "PERCH", act: "perch" },
+                { label: "INTRO", act: "intro" },
                 { label: "WANDER", act: "wander" },
                 { label: "GLITCH", act: "glitch" },
                 { label: "CLOSE", act: "close" }
@@ -778,11 +836,64 @@ Window {
                     onClicked: {
                         win.menuOpen = false
                         if (modelData.act === "sleep") { if (win.asleep) win.wake(); else win.sleep() }
+                        else if (modelData.act === "perch") { win.tryPerch() }
+                        else if (modelData.act === "intro") { exec.run("/home/marteam/.local/bin/capri-intro-open.sh") }
                         else if (modelData.act === "wander") { win.roaming = !win.roaming; win.showBubble(win.roaming ? "wandering." : "staying put.", "face-calm.png", 2000) }
                         else if (modelData.act === "glitch") { win.glitchNow(true); win.showBubble(win.pickTaunt(), "face-smug.png", 1800) }
                         else if (modelData.act === "close") Qt.quit()
                     }
                 }
+            }
+        }
+    }
+
+    Window {
+        id: perch
+        width: 300
+        height: 300
+        visible: false
+        color: "transparent"
+        title: "CAPRI // PERCH"
+        flags: Qt.FramelessWindowHint | Qt.WindowStaysOnBottomHint | Qt.Tool
+
+        Item {
+            x: 40; y: 0; width: 220; height: 270
+            clip: true
+            MultiEffect {
+                x: 5; y: 4
+                width: 220; height: 420
+                source: perchImg
+                colorization: 1.0
+                colorizationColor: win.violet
+                opacity: 0.8
+            }
+            Image {
+                id: perchImg
+                width: 220; height: 420
+                source: win.assets + "capri-cutout.png"
+                fillMode: Image.PreserveAspectFit
+            }
+        }
+
+        Rectangle {
+            x: 8; y: 4; width: 96; height: 18
+            color: win.ink
+            Text {
+                anchors.centerIn: parent
+                text: "comfy."
+                color: win.green
+                font.family: "JetBrains Mono"
+                font.pixelSize: 8
+            }
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            acceptedButtons: Qt.LeftButton | Qt.RightButton
+            cursorShape: Qt.PointingHandCursor
+            onClicked: function (mouse) {
+                if (mouse.button === Qt.RightButton) win.standUp()
+                else exec.run("/home/marteam/.local/bin/capri-chat-open.sh")
             }
         }
     }

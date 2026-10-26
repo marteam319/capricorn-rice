@@ -17,7 +17,11 @@ install -m 644 "$ROOT/capri/capri-chat.qml" "$HOME/.local/share/capricorn/capri-
 install -m 644 "$ROOT/capri/capri-pet.qml" "$HOME/.local/share/capricorn/capri-pet.qml"
 install -m 644 "$ROOT/capri/capri-intro.qml" "$HOME/.local/share/capricorn/capri-intro.qml"
 install -m 644 "$ROOT/capri/capri-pet-rule.js" "$HOME/.local/share/capricorn/capri-pet-rule.js"
+install -m 644 "$ROOT/capri/capri-kwin-tracker.js" "$HOME/.local/share/capricorn/capri-kwin-tracker.js"
+install -m 755 "$ROOT/capri/capri-active-window.sh" "$HOME/.local/share/capricorn/capri-active-window.sh"
 install -m 644 "$ROOT/capri/capri-pet-rule.js" "$HOME/.local/share/capricorn/capri-pet-rule.js"
+install -m 644 "$ROOT/capri/capri-kwin-tracker.js" "$HOME/.local/share/capricorn/capri-kwin-tracker.js"
+install -m 755 "$ROOT/capri/capri-active-window.sh" "$HOME/.local/share/capricorn/capri-active-window.sh"
 install -m 644 "$ROOT/capri/AGENTS.md" "$HOME/.local/share/capricorn/workspace/AGENTS.md"
 install -m 755 "$ROOT/capri/capri-agent.py" "$HOME/.local/share/capricorn/capri-agent.py"
 install -m 755 "$ROOT/capri/capri-chat-open.sh" "$HOME/.local/bin/capri-chat-open.sh"
@@ -57,7 +61,14 @@ kwriteconfig6 --file kwinrulesrc --group capriintro --key skiptaskbar true
 kwriteconfig6 --file kwinrulesrc --group capriintro --key skiptaskbarrule 2
 kwriteconfig6 --file kwinrulesrc --group capriintro --key keepbelow true
 kwriteconfig6 --file kwinrulesrc --group capriintro --key keepbelowrule 2
-kwriteconfig6 --file kwinrulesrc --group General --key Order "steam,cap0,cap1,capipopup,capriintro"
+kwriteconfig6 --file kwinrulesrc --group capriperch --key Description "Capri perch"
+kwriteconfig6 --file kwinrulesrc --group capriperch --key title "CAPRI // PERCH"
+kwriteconfig6 --file kwinrulesrc --group capriperch --key titlematch 1
+kwriteconfig6 --file kwinrulesrc --group capriperch --key skiptaskbar true
+kwriteconfig6 --file kwinrulesrc --group capriperch --key skiptaskbarrule 2
+kwriteconfig6 --file kwinrulesrc --group capriperch --key keepbelow true
+kwriteconfig6 --file kwinrulesrc --group capriperch --key keepbelowrule 2
+kwriteconfig6 --file kwinrulesrc --group General --key Order "steam,cap0,cap1,capipopup,capriintro,capriperch"
 qdbus6 org.kde.KWin /KWin reconfigure 2>/dev/null || true
 
 systemctl --user daemon-reload

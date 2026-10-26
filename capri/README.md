@@ -17,9 +17,14 @@ so normal applications cover her: she is only visible on the wallpaper.
 - **Transmission popup** — a compact in-world panel beside her: "MISSION ACCOMPLIE, CHOOM.", the agent's reply,
   and "◆ N actions · Xs". Shown on summon and when the background agent finishes.
 - **Teleport warp** — she collapses into a red line with shards and reassembles at the destination.
-- **Window sitting is not enabled.** The reference app sits on (and possesses) windows by drawing above them.
-  This pet is deliberately in KWin's Below layer ("only on wallpaper"), so an application always covers her legs.
-  A real perch needs a topmost exception; see the installer notes.
+- **Perch** — right-click her → **PERCH**. The active window is tracked via a KWin script; she shows her upper body
+  on the window's top edge, cropped to the torso, legs hidden behind the window. She stays in the Below layer, so
+  the app still covers her lower half and she never draws over app content. Maximized windows cannot be perched on.
+- **Sleep mask** — right-click → **SLEEP** (or 3 idle minutes): her body fades to the floating green mask, eyes shut,
+  and wakes on hover/click.
+- **INTRO** in her menu replays the face-shutter sequence.
+- Remaining reference features (window possession with eyes, Claude Code window tracking/pointing) need a topmost
+  overlay that draws over apps; they are not enabled in wallpaper-only mode.
 - Clicking the portrait widget fires `/summon`: the card flashes and pulses, the pet teleports to the card's
   exact screen position and pops out of it (0.05 → 1.12 → 1 scale, glitch ghosts/slices, shards, "hey!"),
   then the chat opens after 1.5 s.

@@ -14,4 +14,6 @@ sleep 1
 # ensure KWin keeps her below normal windows and out of the taskbar
 qdbus6 org.kde.KWin /Scripting org.kde.kwin.Scripting.loadScript \
     "$HOME/.local/share/capricorn/capri-pet-rule.js" >/dev/null 2>&1 || true
+qdbus6 org.kde.KWin /Scripting org.kde.kwin.Scripting.loadScript \
+    "$HOME/.local/share/capricorn/capri-kwin-tracker.js" >/dev/null 2>&1 || true
 qdbus6 org.kde.KWin /Scripting org.kde.kwin.Scripting.start >/dev/null 2>&1 || true
